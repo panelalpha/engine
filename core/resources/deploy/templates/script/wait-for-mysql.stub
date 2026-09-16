@@ -1,0 +1,1 @@
+for i in $(seq 1 60); do {{ php }} -r 'try { $h=getenv("DB_HOST") ?: "127.0.0.1"; $p=getenv("DB_PORT") ?: "3306"; $u=getenv("DB_USERNAME") ?: "root"; $pw=getenv("DB_PASSWORD") ?: ""; new PDO("mysql:host={$h};port={$p}", $u, $pw); exit(0);} catch (Throwable $e) { exit(1); }' 2>/dev/null && break; sleep 2; done; 

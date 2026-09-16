@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=./_schema.json
+id: static
+label: Static
+priority: 100
+runtime: nginx
+port: 8080
+detect:
+  probe: static-entry
+  none:
+    - file: composer.json
+    - file: package.json
+    - file: gemfile
+    - file: go.mod
+    - file: cargo.toml
+    - file: requirements.txt
+    # The same predicate python.yaml uses. A tool-only pyproject (codespell,
+    # ruff) is not evidence of Python and must not disqualify a static site;
+    # a real one must, or a site with an index.html and a Python manifest
+    # would be served as documents. See PyprojectProbe.
+    - probe: pyproject
+    - file: pipfile
+    - file: setup.py
+    - file: pom.xml
+    - file: build.gradle
+    - file: build.gradle.kts
+    # Same test the Django recipe detects with: a subdirectory-layout
+    # Django project is still an application, not a directory of documents.
+    - probe: django
+commands: {  }

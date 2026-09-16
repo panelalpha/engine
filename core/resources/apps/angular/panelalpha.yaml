@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: angular
+label: Angular
+priority: 894
+runtime: nginx
+port: 8080
+output_directory: dist
+requires:
+  node:
+    role: build
+detect:
+  any:
+    - file: angular.json
+    - dep: '@angular/core'
+commands:
+  - id: npm-install
+    stage: build
+    role: dependencies
+    run: '{{js.install}}'
+    description: "Resolved from the project's lockfile — npm ci, pnpm install --frozen-lockfile, yarn or bun."
+  - id: ng-build
+    stage: build
+    run: '{{js.build:npx ng build}}'
+    description: "The project's own build script wins over this default when package.json defines one."
+output_from: angular

@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  Matomo from upstream. The shipped `matomo` recipe already claims this tree
+  by its files; naming it here reaches the same recipe with one read instead
+  of a walk of every manifest above it.
+extends: matomo

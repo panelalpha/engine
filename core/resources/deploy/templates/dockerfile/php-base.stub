@@ -1,0 +1,68 @@
+FROM {{ php_image }}
+LABEL panelalpha.base="php"
+LABEL panelalpha.runnable="1"
+COPY --from={{ installer_image }} /usr/bin/install-php-extensions /usr/local/bin/
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git unzip \
+ && rm -rf /var/lib/apt/lists/*
+RUN install-php-extensions {{ extensions }}
+{{# extras }}
+RUN install-php-extensions {{ extras }}
+{{/ extras }}
+# Composer belongs to the image, not to a project. Every account resolved its
+# own copy while there was a per-project Dockerfile to put it in; there is not
+# one any more, and the host step that runs `composer install` runs it from
+# here.
+COPY --from={{ composer_image }} /usr/bin/composer /usr/bin/composer
+ENV COMPOSER_ALLOW_SUPERUSER=1
+ENV COMPOSER_MAX_PARALLEL_HTTP=6
+ENV COMPOSER_HOME=/tmp/composer
+ENV COMPOSER_CACHE_DIR={{ composer_cache_dir }}
+# A deploy has no SSH key and no agent, so a dependency Composer decides to
+# fetch over ssh fails with `error: cannot run ssh: No such file or directory`
+# -- Chamilo 1.11, whose composer.json marks its five GitHub repositories
+# `no-api`. Anything public clones over https just as well; anything private
+# was never going to work here either way. Set through the environment rather
+# than `git config --global`, which would need a writable HOME.
+ENV GIT_CONFIG_COUNT=2
+ENV GIT_CONFIG_KEY_0=url.https://github.com/.insteadOf
+ENV GIT_CONFIG_VALUE_0=git@github.com:
+ENV GIT_CONFIG_KEY_1=url.https://.insteadOf
+ENV GIT_CONFIG_VALUE_1=ssh://git@
+# Apache, configured once for every PHP application the engine will ever serve.
+# None of this is project-specific: the vhost reads its document root from
+# ${PA_DOCROOT}, which the manifest's serve command exports at boot, because
+# whether an app serves from public/ is only settled then.
+RUN a2enmod {{ apache_modules }}
+RUN cat > {{ ports_path }} <<'PA_PORTS'
+{{ ports_conf }}
+PA_PORTS
+RUN cat > {{ vhost_path }} <<'PA_VHOST'
+{{ vhost_conf }}
+PA_VHOST
+# The proxy prelude lives in the image, not in /app: /app is the customer's
+# own directory now, and a file the engine needs must not be one they can
+# delete over SFTP.
+RUN mkdir -p {{ proxy_script_dir }}
+RUN cat > {{ proxy_script_path }} <<'PA_PROXY'
+{{ proxy_script }}
+PA_PROXY
+RUN cat > {{ proxy_ini_path }} <<'PA_PROXY_INI'
+{{ proxy_ini }}
+PA_PROXY_INI
+# How a document root becomes a running server. A manifest declares
+# `docroot:`; turning that into Apache is the image's job, not fourteen copies
+# of the same shell snippet in fourteen recipes.
+RUN cat > {{ serve_path }} <<'PA_SERVE'
+{{ serve_script }}
+PA_SERVE
+RUN chmod +x {{ serve_path }}
+RUN cat > {{ entrypoint_path }} <<'PA_ENTRYPOINT'
+{{ entrypoint_script }}
+PA_ENTRYPOINT
+RUN chmod +x {{ entrypoint_path }}
+WORKDIR /app
+EXPOSE {{ port }}
+ENTRYPOINT ["{{ entrypoint_path }}"]
+# Kept, so the shim can tell "no command" from one the caller meant.
+CMD ["apache2-foreground"]

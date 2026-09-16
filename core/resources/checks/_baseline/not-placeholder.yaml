@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=../_schema.json
+#
+# The failure this whole mechanism exists for. The engine writes its own page
+# into a project it could not work out how to run, and nginx serves it with a
+# 200 -- so the deploy is green, the port answers, the domain resolves, and
+# the site is PanelAlpha's rather than the customer's. Nothing else in the
+# health report can tell those apart, because at the socket they are identical.
+#
+# Only the not-configured page. The welcome page is a separate check with a
+# separate severity, because an account that has never had an application is
+# supposed to show one and reporting that as a fault would make every empty
+# account look broken.
+#
+# Matched on the title, which PlaceholderPage documents as the detection
+# contract for exactly this reason: whoever writes a placeholder must use it
+# verbatim.
+id: not-placeholder
+severity: error
+serving: placeholder
+expect:
+  body_not:
+    - 'PanelAlpha — Project not configured'
+message: 'The site answers, but it is serving the PanelAlpha placeholder rather than your application.'
+explain: placeholder-page

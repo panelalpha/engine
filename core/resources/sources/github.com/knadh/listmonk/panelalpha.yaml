@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  listmonk on the compose stack its own repository ships — nothing here
+  overrides it. The only addition is the app-management script, which talks
+  to PostgreSQL directly because listmonk is a compiled binary with no
+  plugin system.

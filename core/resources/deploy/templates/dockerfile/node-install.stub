@@ -1,0 +1,5 @@
+COPY package.json ./
+{{ manifest_copies }}
+RUN {{ strip_git_hooks }}
+RUN {{ install_command }}
+COPY . .

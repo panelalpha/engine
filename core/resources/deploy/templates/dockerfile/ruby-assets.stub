@@ -1,0 +1,10 @@
+FROM {{ node_image }} AS assets
+WORKDIR /app
+COPY package.json ./
+COPY package-lock.json* pnpm-lock.yaml* yarn.lock* bun.lock* ./
+ENV CI=true
+RUN {{ install_command }}
+COPY . .
+ENV NODE_ENV=production
+ENV RAILS_ENV=production
+RUN {{ build_command }}

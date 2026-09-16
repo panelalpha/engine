@@ -1,0 +1,31 @@
+services:
+  sites-http:
+    profiles: ["hosting", "full"]
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-apache
+    image: ghcr.io/panelalpha/engine-apache:20260526
+    pull_policy: missing
+    labels:
+      - com.panelalpha.webserver=apache
+    depends_on:
+      - core
+    restart: always
+    hostname: webserver.shared-hosting.palocal
+    network_mode: host
+    dns:
+      - 127.0.0.54
+    volumes:
+      - /home:/home
+      - ./webserver-config/apache/httpd.conf:/usr/local/apache2/conf/httpd.conf
+      - ./webserver-config/apache/vhosts:/usr/local/apache2/conf.d
+      - ./third-party/modsecurity-3.0.15/lib/libmodsecurity.so.3.0.15:/usr/lib/libmodsecurity.so.3
+      - ./third-party/modsecurity-3.0.15/deps/libGeoIP.so.1:/usr/lib/libGeoIP.so.1
+      - ./third-party/modsecurity-3.0.15/deps/libyajl.so.2:/usr/lib/libyajl.so.2
+      - ./third-party/modsecurity-3.0.15/connector-apache-2.4.67/mod_security3.so:/usr/lib/apache2/modules/mod_security3.so
+      - ./config/modsecurity:/opt/modsecurity
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/lib/letsencrypt:/var/lib/letsencrypt
+      - /opt/panelalpha:/opt/panelalpha
+    mem_limit: ${MEM_LIMIT_SITES_HTTP_APACHE:-${MEM_LIMIT_WEBSERVER_APACHE:-3G}}
+    memswap_limit: ${MEMSWAP_LIMIT_SITES_HTTP_APACHE:-${MEMSWAP_LIMIT_WEBSERVER_APACHE:-0}}

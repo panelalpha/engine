@@ -1,0 +1,53 @@
+# Magento 2.4 will not finish setup:install without a search engine -- the
+# catalogue search has been OpenSearch or Elasticsearch since 2.4.0, and there
+# is no "off" -- and a manifest can ask the engine for `database: mysql` and
+# nothing else. So the search engine comes as a compose override instead,
+# layered over the generated file rather than replacing it.
+services:
+  opensearch:
+    # 2.19.6 rather than latest: this is the version the store was proven
+    # against by hand on this engine, and Magento validates the search
+    # engine's version at setup:install rather than at first query.
+    image: opensearchproject/opensearch:2.19.6
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      # Not a production posture; it is what lets Magento talk to it over
+      # plain HTTP on a private compose network with no certificate.
+      DISABLE_SECURITY_PLUGIN: 'true'
+      DISABLE_INSTALL_DEMO_CONFIG: 'true'
+      # The heap has to fit inside the container's memory limit with room for
+      # the JVM's own off-heap use, or the cgroup kills it on the first
+      # indexing run rather than at start, which is much harder to read.
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+    # Declared, not left to the hardener: it catalogues elasticsearch (and
+    # opensearch, its alias) at 384m, which is less than this heap. The
+    # hardener only fills in a limit the author did not write, so writing one
+    # here is what keeps the two numbers consistent -- 512m of heap plus the
+    # JVM's own off-heap use does not fit in 384m, and the failure would be a
+    # cgroup kill partway through the first indexing run.
+    # 1g is not enough: measured on this engine, an idle 2.19.6 with the
+    # stock plugin set (ML commons, security analytics, ISM) sits at 840 MiB
+    # against a 512m heap, and Magento's first reindex is not idle.
+    mem_limit: 1536m
+    ulimits:
+      # No memlock here. An account is a Sysbox container and its nested
+      # containers cannot raise RLIMIT_MEMLOCK above the parent's, so asking
+      # kills the container before it starts:
+      #   error setting rlimit type 8: operation not permitted
+      # It is only needed for bootstrap.memory_lock, which this does not set.
+      nofile: { soft: 65536, hard: 65536 }
+    healthcheck:
+      # setup:install talks to the search engine partway through, and a
+      # refused connection there leaves a half-written database that the next
+      # attempt will not install over. Waiting for yellow is what makes the
+      # install stage safe to start.
+      test: ["CMD-SHELL", "curl -fsS localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+  app:
+    depends_on:
+      opensearch:
+        condition: service_healthy

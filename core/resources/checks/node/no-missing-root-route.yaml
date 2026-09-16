@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../_schema.json
+#
+# Express answering its own 404 at `/`.
+#
+# `Cannot GET /` is Express's default when no route is registered for the path
+# asked for, and at `/` it means the application is running and has nothing at
+# its front door.
+#
+# A warning, because an API is allowed to look like this. A service whose
+# routes all live under /api/ legitimately has no `/`, and calling that a
+# broken deploy would be wrong for a whole class of correct application --
+# while saying nothing at all would leave the person who forgot to mount their
+# router with a green deploy and a blank site.
+id: no-missing-root-route
+severity: warning
+serving: no_root_route
+expect:
+  body_not:
+    - 'Cannot GET /'
+message: 'The application is running but has no route for /.'
+fix: 'Expected for an API served entirely under a prefix. Otherwise the root route was not registered.'

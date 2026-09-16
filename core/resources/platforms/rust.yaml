@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=./_schema.json
+id: rust
+label: Rust
+priority: 750
+runtime: command
+port: 8080
+requires:
+  rust: runtime
+detect:
+  file: cargo.toml
+commands:
+  - id: system-packages
+    stage: build
+    role: dependencies
+    description: 'Crates that link OpenSSL or libpq need the headers present before cargo build.'
+    run: 'apt-get update && apt-get install -y --no-install-recommends pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*'
+  - id: cargo-build
+    stage: build
+    run: 'cargo build --release'
+  - id: serve
+    stage: start
+    serve: true
+    run: ./target/release/app
+commands_from:
+  system-packages: rust.packages
+  cargo-build: rust.build
+  serve: rust.start

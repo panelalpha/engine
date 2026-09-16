@@ -1,0 +1,5 @@
+set -e
+ROOT="/home/$(hostname)/docker"
+supervisorctl -c /etc/supervisor/supervisord.conf stop docker >/dev/null 2>&1 || true
+rm -rf "$ROOT"
+mkdir -p "$ROOT"

@@ -1,0 +1,28 @@
+services:
+  sites-http:
+    profiles: ["hosting", "full"]
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-litespeed
+    image: ghcr.io/panelalpha/engine-litespeed:20260527
+    pull_policy: missing
+    labels:
+      - com.panelalpha.webserver=litespeed
+    depends_on:
+      - core
+    restart: always
+    hostname: webserver.shared-hosting.palocal
+    network_mode: host
+    dns:
+      - 127.0.0.54
+    volumes:
+      - /home:/home
+      - ./webserver-config/litespeed:/usr/local/lsws/conf
+      - ./webserver-config/litespeed-admin:/usr/local/lsws/admin/conf
+      - ./logs/litespeed:/usr/local/lsws/logs
+      - ./config/modsecurity:/opt/modsecurity
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/lib/letsencrypt:/var/lib/letsencrypt
+      - /opt/panelalpha:/opt/panelalpha
+    mem_limit: ${MEM_LIMIT_SITES_HTTP_LITESPEED:-${MEM_LIMIT_WEBSERVER_LITESPEED:-3G}}
+    memswap_limit: ${MEMSWAP_LIMIT_SITES_HTTP_LITESPEED:-${MEMSWAP_LIMIT_WEBSERVER_LITESPEED:-0}}

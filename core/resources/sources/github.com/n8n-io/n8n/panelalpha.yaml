@@ -1,0 +1,5 @@
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  n8n on the official image with a named volume for its SQLite database,
+  replacing the repository's development compose file. User management and
+  SSO read that database directly.

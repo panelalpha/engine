@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  WordPress on the official image with MySQL 8, since the repository ships
+  source and no compose file. The prepare hook generates the database
+  credentials and all eight secret keys; a must-use plugin provides user
+  management and SSO.

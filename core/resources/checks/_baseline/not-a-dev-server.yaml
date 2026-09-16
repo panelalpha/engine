@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../_schema.json
+#
+# The project is being served by its development server.
+#
+# `npm run dev` as a start command is the single easiest thing to deploy by
+# accident, and nothing about the result looks wrong: it answers 200, it
+# serves the application, and it is what the author saw on their laptop. What
+# it also does is rebuild on every request, watch the filesystem, and in most
+# frameworks bind an unauthenticated HMR socket -- none of which anyone
+# intended to put on the internet.
+#
+# A warning rather than an error, because it *is* serving the application.
+# Told, not blocked.
+#
+# The tells are the client the dev server injects into every page, which the
+# production build has no reason to contain -- and which is the same string
+# whoever built the image. That is why this is a baseline check rather than
+# node's: a Next.js project in a hand-written Dockerfile is `runtime:
+# dockerfile`, and it was the one shape of this failure the node group could
+# never see.
+id: not-a-dev-server
+severity: warning
+serving: dev_server
+expect:
+  body_not:
+    - '/@vite/client'
+    - '/_next/webpack-hmr'
+    - 'react-refresh'
+message: 'This project is being served by a development server, not a production build.'
+explain: node-start-command

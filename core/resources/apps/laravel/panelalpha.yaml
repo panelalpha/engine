@@ -1,0 +1,63 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: laravel
+label: Laravel
+priority: 940
+runtime: php
+port: 8000
+docroot: public
+env:
+  APP_ENV: production
+  LOG_CHANNEL: stderr
+requires:
+  php: runtime
+  node:
+    role: build
+    optional: true
+detect:
+  all:
+    - file: composer.json
+    - file: artisan
+commands:
+  - id: composer-install
+    stage: build
+    role: dependencies
+    description: 'Runs on the host, in the image the app will be served from, so Composer checks the real PHP version and extension set. --no-plugins because a plugin is arbitrary PHP out of the customer repository and this runs on the host daemon.'
+    run: 'composer install --no-dev --no-interaction --no-scripts --no-plugins --optimize-autoloader'
+  # No npm commands here. The frontend is compiled on the host by
+  # HostCompile::runForPhp(), with the project's own package manager and its
+  # own lockfile. A build-stage command runs in the PHP host build, which has
+  # no Node in it, so `npm run build` there fails for every Laravel app that has
+  # a build script.
+  - id: package-discover
+    stage: build
+    description: 'composer install ran with --no-scripts, so vendor package discovery and published assets have to be done explicitly once the source is present.'
+    run: 'composer run-script --no-interaction post-autoload-dump'
+    optional: true
+  # The real text comes from commands_from; `run` only has to be non-empty.
+  - id: asset-publish
+    stage: build
+    description: 'The vendor:publish and filament:assets lines of the project''s own post-update-cmd and post-create-project-cmd, which composer install never runs. Nothing else from those scripts is taken.'
+    run: 'true'
+    optional: true
+  - id: key-generate
+    stage: install
+    description: 'Only on first deploy — regenerating APP_KEY later would invalidate every existing session and encrypted column.'
+    run: 'php artisan key:generate --force --no-interaction'
+  - id: storage-link
+    stage: install
+    run: 'php artisan storage:link'
+    optional: true
+  - id: migrate
+    stage:
+      - install
+      - upgrade
+    description: 'Runs when the code changed, never on a plain restart or a crash-loop retry.'
+    run: 'php artisan migrate --force --no-interaction'
+    timeout: 600
+  - id: optimize
+    stage: start
+    description: 'Config, route and view caches are keyed on the environment, which is only fully known at boot — cheap and idempotent, so it belongs on every start.'
+    run: 'php artisan optimize'
+    optional: true
+commands_from:
+  asset-publish: laravel.assets

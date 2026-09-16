@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  Element Web is the Matrix client: a pnpm + nx monorepo whose application
+  lives in apps/web and ships its own multi-stage Dockerfile there, alongside
+  a pnpm 12 / node:24 builder and an nginxinc/nginx-unprivileged:alpine-slim
+  runtime that serves the built webapp from /app on ELEMENT_WEB_PORT (80).
+  The repository root carries no build or start script at all — only the
+  workspace manifests and the nx/docker-bake configuration — so file
+  detection has nothing to recognise and the project fell through to
+  Railpack, which produced a container with no command that compiled or
+  served anything.
+
+  docker-bake.hcl says how the authors build it: context is the repository
+  root, dockerfile is apps/web/Dockerfile, and the target is element_web (not
+  the file's last stage, element_web_modules, which exists only to copy the
+  released Element modules into /modules). The Dockerfile states the
+  requirement in a comment — "Context must be the root of the monorepo" — so
+  the engine's own compose writer, which sets `context: .` and names the
+  Dockerfile relative to it, already gives the build exactly the context it
+  needs. Nothing else about the stack has to be described: the image serves
+  its own files, and the nginx templates and entrypoint hooks the Dockerfile
+  installs run unmodified.
+extends: dockerfile
+strategy: dockerfile
+id: element-web
+label: Element Web
+port: 80
+extra:
+  # A source recipe is applied without running the probes
+  # (PlatformSelector::fromSource() calls describe() with no probe data), so the
+  # dockerfile probe's dockerfile/port_hint would be null/80 even though the
+  # repository ships apps/web/Dockerfile — and the deployability check then fails
+  # with "Dockerfile strategy selected but Dockerfile is missing." State what
+  # the probe would have found until that path runs its probes too. The port is
+  # not an EXPOSE (the file has none) but the ELEMENT_WEB_PORT the Dockerfile
+  # gives nginx; 80 becomes host port 8080, which is what the proxy fronts.
+  dockerfile: apps/web/Dockerfile
+  port_hint: 80

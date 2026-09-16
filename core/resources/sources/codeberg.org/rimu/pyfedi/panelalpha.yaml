@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../../platforms/_schema.json
+description: >-
+  PieFed is a Flask link aggregator for the fediverse: gunicorn serving on :5000,
+  PostgreSQL for data, Redis for cache and the celery broker. The compose file it
+  ships is a workstation stack — the web/celery/notifs services build the image
+  and bind-mount ./media ./logs ./tmp for live reload — so the compose probe
+  rejects it and detection builds the repository's own Dockerfile (python:3.13,
+  gunicorn, entrypoint.sh running the migrations) instead, reading the compose
+  for its postgres and redis. What the engine's runtime-sidecars reader merges
+  from that file is not deployable as written: the db service declares no inline
+  environment (its credentials come from a gitignored .env.docker that does not
+  exist in the checkout), so it would start with placeholder credentials the
+  application could never match; its command asks for shared_buffers=1GB inside
+  an account whose memory ceiling is 1GB; and the generated app-side connection
+  URL uses the postgres:// scheme, which SQLAlchemy 2.x no longer accepts. The
+  prepare hook therefore writes .env (SECRET_KEY generated, DATABASE_URL in the
+  postgresql+psycopg2 spelling SQLAlchemy reads, redis URLs at the container
+  hostnames) and copies it to .env.docker, which the merged db service requires
+  to exist; overrides/docker-compose.override.yml then replaces the db and redis
+  services with right-sized ones whose credentials interpolate from that same
+  .env, and makes the app wait on a healthy postgres.
+extends: dockerfile
+extra:
+  # A source recipe is applied without running the probes
+  # (PlatformSelector::fromSource() calls describe() with no probe data), so the
+  # dockerfile probe's dockerfile/port_hint would be null/80 even though the
+  # repository ships a root Dockerfile — and the deployability check then fails
+  # with "Dockerfile strategy selected but Dockerfile is missing." State what
+  # the probe would have found until that path runs its probes too. The
+  # Dockerfile EXPOSEs 5000 (gunicorn's bind in gunicorn.conf.py).
+  dockerfile: Dockerfile
+  port_hint: 5000

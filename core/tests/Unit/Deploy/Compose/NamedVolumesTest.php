@@ -1,0 +1,106 @@
+<?php
+
+namespace Tests\Unit\Deploy\Compose;
+
+use App\Lib\Deploy\Compose\NamedVolumes;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * The `volumes:` block a reduced stack still needs.
+ *
+ * Two failures on either side of this: declaring a volume no kept service
+ * mounts is a directory the account pays for forever, and mounting one the
+ * file never declared is a compose validation error that stops the deploy
+ * before anything starts.
+ */
+class NamedVolumesTest extends TestCase
+{
+    public function test_a_mounted_volume_keeps_its_declaration(): void
+    {
+        $volumes = NamedVolumes::usedBy(
+            ['db' => ['volumes' => ['dbdata:/var/lib/postgresql/data']]],
+            ['dbdata' => ['driver' => 'local']]
+        );
+
+        $this->assertSame(['dbdata' => ['driver' => 'local']], $volumes);
+    }
+
+    public function test_a_mounted_volume_the_file_never_declared_is_still_declared(): void
+    {
+        // Compose refuses to start a stack that mounts an undeclared volume,
+        // so the null default matters: it emits `dbdata:` with no options.
+        $volumes = NamedVolumes::usedBy(['db' => ['volumes' => ['dbdata:/var/lib/mysql']]], []);
+
+        $this->assertSame(['dbdata' => null], $volumes);
+    }
+
+    public function test_a_declared_volume_nothing_mounts_is_dropped(): void
+    {
+        // Left over from a service the reduction removed.
+        $volumes = NamedVolumes::usedBy(
+            ['app' => ['image' => 'acme/app']],
+            ['dbdata' => null, 'esdata' => null]
+        );
+
+        $this->assertSame([], $volumes);
+    }
+
+    public function test_a_bind_mount_is_not_a_named_volume(): void
+    {
+        // It points at a path on someone's workstation that does not exist in
+        // the account.
+        $volumes = NamedVolumes::usedBy(
+            ['app' => ['volumes' => ['./src:/app/src', '.:/app', '/etc/localtime:/etc/localtime:ro']]],
+            []
+        );
+
+        $this->assertSame([], $volumes);
+    }
+
+    public function test_the_long_form_is_read(): void
+    {
+        $volumes = NamedVolumes::usedBy(
+            ['db' => ['volumes' => [['type' => 'volume', 'source' => 'dbdata', 'target' => '/var/lib/mysql']]]],
+            ['dbdata' => null]
+        );
+
+        $this->assertSame(['dbdata' => null], $volumes);
+    }
+
+    public function test_the_long_form_bind_is_not_a_named_volume(): void
+    {
+        $volumes = NamedVolumes::usedBy(
+            ['app' => ['volumes' => [['type' => 'bind', 'source' => './src', 'target' => '/app/src']]]],
+            []
+        );
+
+        $this->assertSame([], $volumes);
+    }
+
+    public function test_an_anonymous_volume_needs_no_declaration(): void
+    {
+        // `- /var/lib/mysql` with no source: Docker names it itself.
+        $volumes = NamedVolumes::usedBy(['db' => ['volumes' => ['/var/lib/mysql']]], []);
+
+        $this->assertSame([], $volumes);
+    }
+
+    public function test_one_volume_shared_by_two_services_is_declared_once(): void
+    {
+        $volumes = NamedVolumes::usedBy(
+            [
+                'app' => ['volumes' => ['uploads:/app/storage']],
+                'worker' => ['volumes' => ['uploads:/app/storage']],
+            ],
+            ['uploads' => null]
+        );
+
+        $this->assertSame(['uploads' => null], $volumes);
+    }
+
+    public function test_a_service_that_mounts_nothing_contributes_nothing(): void
+    {
+        $this->assertSame([], NamedVolumes::usedBy(['app' => ['image' => 'acme/app']], ['dbdata' => null]));
+        $this->assertSame([], NamedVolumes::usedBy(['app' => ['volumes' => 'dbdata:/data']], ['dbdata' => null]));
+    }
+}

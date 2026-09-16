@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=./_schema.json
+id: not-a-web-app
+strategy: fallback
+label: 'Not a web app'
+priority: 700
+runtime: nginx
+port: 8080
+detect:
+  probe: not-a-web-app
+commands: {  }

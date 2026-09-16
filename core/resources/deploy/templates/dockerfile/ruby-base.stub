@@ -1,0 +1,5 @@
+FROM {{ ruby_image }}
+LABEL panelalpha.base="ruby"
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends {{ packages }} \
+ && rm -rf /var/lib/apt/lists/*

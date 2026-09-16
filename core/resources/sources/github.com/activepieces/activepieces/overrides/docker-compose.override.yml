@@ -1,0 +1,11 @@
+services:
+  app:
+    volumes:
+      - ./docker:/usr/src/app/docker:ro
+    # The app is an `app`-role service, so the engine caps it at 384m and sizes
+    # V8 to 268 MB; it dies with "Ineffective mark-compacts near heap limit"
+    # before serving. An override's limits reach Docker as written, so the heap
+    # has to be set here too.
+    mem_limit: 1g
+    environment:
+      - NODE_OPTIONS=--max-old-space-size=716

@@ -1,0 +1,6 @@
+{
+    "require": {
+        "symfony/yaml": "^6.4",
+        "symfony/process": "^7.4"
+    }
+}

@@ -1,0 +1,3 @@
+if [ "$PA_PHASE" = "{{ stage }}" ]; then
+  {{ commands }}
+fi

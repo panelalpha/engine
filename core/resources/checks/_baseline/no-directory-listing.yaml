@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../_schema.json
+#
+# nginx offering the contents of the document root instead of a page. It is a
+# 200, so nothing else notices, and what it publishes is every file in
+# ~/project -- an application's sources listed to anyone who asks.
+#
+# Distinct from `entry-served` on purpose: a listing means the server found
+# the directory and no document in it, which is a different mistake from an
+# entry document that was named and is gone.
+#
+# Baseline rather than nginx's, because the page is not nginx's to own:
+# Apache titles its listing the same way, and the projects most likely to
+# publish one are the two whose recipe the engine did not write -- a Dockerfile
+# that copied the repository into a document root, a compose file proxying a
+# service that has no index.
+#
+# `Directory listing for /` is Python's. `http.server` writes its own title
+# rather than the one the C servers share, so matching only "Index of /" let
+# the worst version of this through: an InvenTree deploy fell back to
+# `python -m http.server`, published the whole checkout -- `/.git/config`
+# answered 200 on a public name -- and this check, the one named for exactly
+# that failure, passed.
+id: no-directory-listing
+severity: error
+serving: directory_listing
+expect:
+  body_not:
+    - '<title>Index of /'
+    - '<title>Directory listing for '
+    - '<h1>Directory listing for '
+message: 'The site is serving a directory listing instead of a page.'
+fix: 'Nothing in the document root is an index page. Add one, or set `static_index` in panelalpha.yaml.'

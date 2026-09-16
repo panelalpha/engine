@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: sveltekit-static
+strategy: sveltekit
+label: 'SvelteKit (static)'
+priority: 912
+runtime: nginx
+port: 8080
+output_directory: build
+requires:
+  node:
+    role: build
+detect:
+  all:
+    - dep: '@sveltejs/kit'
+    - any:
+        -
+          glob: svelte.config
+        -
+          dep: svelte
+    - dep: '@sveltejs/adapter-static'
+  none:
+    - dep: '@sveltejs/adapter-node'
+commands:
+  - id: npm-install
+    stage: build
+    role: dependencies
+    run: '{{js.install}}'
+    description: "Resolved from the project's lockfile — npm ci, pnpm install --frozen-lockfile, yarn or bun."
+  - id: vite-build
+    stage: build
+    run: '{{js.build:npx vite build}}'
+    description: "The project's own build script wins over this default when package.json defines one."

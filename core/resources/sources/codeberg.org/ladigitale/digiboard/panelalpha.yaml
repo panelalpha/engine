@@ -1,0 +1,13 @@
+---
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  Digiboard is a collaborative whiteboard: a vike (Vite 8) single-page-plus-server
+  application whose Express 5 server renders the Vue pages server-side and keeps
+  boards, sessions and rate limits in Redis. The compose file it ships is a
+  workstation stack — the app service bind-mounts ./static for uploads and
+  traefik fronts it — so the compose probe rejects it and detection builds the
+  repository's own Dockerfile instead, reading the compose for its redis
+  sidecar. The repository's docker-compose.override.yml must be stashed: it
+  pins DOMAIN to localhost and re-gates traefik, and ProjectPaths merges any
+  surviving override over the compose file the engine generates.
+extends: dockerfile

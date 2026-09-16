@@ -1,0 +1,46 @@
+services:
+  database:
+    image: postgres
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U unicorn_user -d calendso"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    volumes:
+      - database-data:/var/lib/postgresql
+    environment:
+      - POSTGRES_USER=unicorn_user
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=calendso
+  redis:
+    image: redis:latest
+    restart: always
+    volumes:
+      - redis-data:/data
+  calcom:
+    image: calcom/cal.com:latest
+    restart: always
+    mem_limit: 1g
+    ports:
+      - 3000:3000
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://unicorn_user:${POSTGRES_PASSWORD}@database/calendso
+      - DATABASE_DIRECT_URL=postgresql://unicorn_user:${POSTGRES_PASSWORD}@database/calendso
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"const n=require('net');const s=n.connect(3000,'127.0.0.1',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1));setTimeout(()=>process.exit(1),4000)\""]
+      interval: 15s
+      timeout: 8s
+      retries: 10
+      start_period: 90s
+    volumes:
+      - ./docker:/calcom/panelalpha:ro
+    depends_on:
+      database:
+        condition: service_healthy
+volumes:
+  database-data:
+  redis-data:

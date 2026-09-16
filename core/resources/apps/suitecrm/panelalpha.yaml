@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: suitecrm
+strategy: php
+label: SuiteCRM
+priority: 939
+runtime: php
+port: 8000
+docroot: .
+# SuiteCRM's own Setup Wizard is what should greet the first visitor, and the
+# generic PHP platform already gets it there. What it cannot supply is the
+# database the wizard's second step asks for: SuiteCRM ships none, declares no
+# database extension in composer.json (it talks to MySQL through its own DBManager),
+# and has no environment variable to read credentials from.
+env:
+  APP_ENV: production
+  LOG_CHANNEL: stderr
+requires:
+  php: runtime
+# MySQL only for a hosting account: the other DBManagers SuiteCRM ships are
+# SQL Server and Oracle.
+database: mysql
+detect:
+  all:
+    - file: composer.json
+    - path: suitecrm_version.php
+    - path: install.php
+    # SugarCRM heritage, and the file every SuiteCRM entry point includes.
+    - path: include/entryPoint.php
+commands:
+  - id: writable-dirs
+    stage: [install, upgrade]
+    description: 'The Setup Wizard writes config.php and config_override.php at the root and fills cache/ and upload/ as it runs; it stops on its own permission check when any of them is read-only. upload/ is not in the repository at all.'
+    run: 'mkdir -p /app/cache /app/upload /app/custom && chmod -R 775 /app/cache /app/upload /app/custom'

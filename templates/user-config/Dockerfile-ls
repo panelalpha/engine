@@ -1,0 +1,179 @@
+FROM debian:bookworm-slim
+
+RUN apt-get update && \
+  apt-get install -y \
+  lsb-release \
+  apt-transport-https \
+  ca-certificates \
+  wget \
+  curl \
+  git \
+  gnupg \
+  inotify-tools \
+  cron \
+  zip \
+  mariadb-client \
+  curl \
+  rsync
+
+RUN apt-get install -y \
+  redis-server
+RUN sed -i 's/^logfile/#&/' /etc/redis/redis.conf
+
+RUN mkdir -p /var/log/cron
+
+RUN wget -O - https://repo.litespeed.sh | bash
+RUN apt-get update 
+
+RUN apt-get install -y \
+  lsphp74 \
+  lsphp74-apcu \
+  lsphp74-common \
+  lsphp74-curl \
+  lsphp74-igbinary \
+  lsphp74-imagick \
+  lsphp74-imap \
+  lsphp74-intl \
+  lsphp74-ldap \
+  lsphp74-memcached \
+  lsphp74-msgpack \
+  lsphp74-mysql \
+  lsphp74-opcache \
+  lsphp74-pgsql \
+  lsphp74-pspell \
+  lsphp74-redis \
+  lsphp74-snmp \
+  lsphp74-sqlite3 \
+  lsphp74-sybase \
+  lsphp74-tidy
+
+RUN apt-get install -y \
+  lsphp80 \
+  lsphp80-apcu \
+  lsphp80-common \
+  lsphp80-curl \
+  lsphp80-igbinary \
+  lsphp80-imagick \
+  lsphp80-imap \
+  lsphp80-intl \
+  lsphp80-ldap \
+  lsphp80-memcached \
+  lsphp80-msgpack \
+  lsphp80-mysql \
+  lsphp80-opcache \
+  lsphp80-pgsql \
+  lsphp80-pspell \
+  lsphp80-redis \
+  lsphp80-snmp \
+  lsphp80-sqlite3 \
+  lsphp80-sybase \
+  lsphp80-tidy
+
+RUN apt-get install -y \
+  lsphp81 \
+  lsphp81-apcu \
+  lsphp81-common \
+  lsphp81-curl \
+  lsphp81-igbinary \
+  lsphp81-imagick \
+  lsphp81-imap \
+  lsphp81-intl \
+  lsphp81-ioncube \
+  lsphp81-ldap \
+  lsphp81-memcached \
+  lsphp81-msgpack \
+  lsphp81-mysql \
+  lsphp81-opcache \
+  lsphp81-pear \
+  lsphp81-pgsql \
+  lsphp81-pspell \
+  lsphp81-redis \
+  lsphp81-snmp \
+  lsphp81-sqlite3 \
+  lsphp81-sybase \
+  lsphp81-tidy
+
+RUN apt-get install -y \
+  lsphp82 \
+  lsphp82-apcu \
+  lsphp82-common \
+  lsphp82-curl \
+  lsphp82-igbinary \
+  lsphp82-imagick \
+  lsphp82-imap \
+  lsphp82-intl \
+  lsphp82-ioncube \
+  lsphp82-ldap \
+  lsphp82-memcached \
+  lsphp82-msgpack \
+  lsphp82-mysql \
+  lsphp82-opcache \
+  lsphp82-pear \
+  lsphp82-pgsql \
+  lsphp82-pspell \
+  lsphp82-redis \
+  lsphp82-snmp \
+  lsphp82-sqlite3 \
+  lsphp82-sybase \
+  lsphp82-tidy
+
+RUN apt-get install -y \
+  lsphp83 \
+  lsphp83-apcu \
+  lsphp83-common \
+  lsphp83-curl \
+  lsphp83-igbinary \
+  lsphp83-imagick \
+  lsphp83-imap \
+  lsphp83-intl \
+  lsphp83-ioncube \
+  lsphp83-ldap \
+  lsphp83-memcached \
+  lsphp83-msgpack \
+  lsphp83-mysql \
+  lsphp83-opcache \
+  lsphp83-pear \
+  lsphp83-pgsql \
+  lsphp83-pspell \
+  lsphp83-redis \
+  lsphp83-snmp \
+  lsphp83-sqlite3 \
+  lsphp83-sybase \
+  lsphp83-tidy
+
+RUN apt-get install -y \
+  lsphp84 \
+  lsphp84-apcu \
+  lsphp84-common \
+  lsphp84-curl \
+  lsphp84-igbinary \
+  lsphp84-imagick \
+  lsphp84-imap \
+  lsphp84-intl \
+  lsphp84-ioncube \
+  lsphp84-ldap \
+  lsphp84-memcached \
+  lsphp84-msgpack \
+  lsphp84-mysql \
+  lsphp84-opcache \
+  lsphp84-pear \
+  lsphp84-pgsql \
+  lsphp84-pspell \
+  lsphp84-redis \
+  lsphp84-snmp \
+  lsphp84-sqlite3 \
+  lsphp84-sybase \
+  lsphp84-tidy
+
+RUN apt-get install -y msmtp
+RUN ln -sf /usr/bin/msmtp /usr/sbin/sendmail
+
+RUN rm -rf /var/lib/apt/lists/* && rm -rf /var/cache/apk/*
+
+COPY ./wp-cli/wp-cli.phar /opt/wp-cli.phar
+
+WORKDIR /var/www
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]

@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../_schema.json
+#
+# The application is up and something it depends on is not.
+#
+# A stack is more than one container, and only one of them is probed. The
+# database, the cache or the queue can be missing entirely while the
+# application answers 200 and renders the connection failure into the page --
+# which is a working web server in front of an application that cannot do
+# anything.
+#
+# Most characteristic of a repository's own compose file, where services find
+# each other by name and a typo in one is a name that resolves nowhere. It is
+# in the baseline because the engine attaches sidecars to Dockerfile and
+# framework deploys too, and the error text a runtime prints does not depend
+# on who wrote the recipe.
+#
+# The needles are resolver and socket errors, never the English words: "could
+# not translate host name" is a message, "connection refused" is also a
+# sentence people write.
+id: no-service-unreachable
+severity: error
+serving: dependency_unreachable
+expect:
+  body_not:
+    - 'ECONNREFUSED'
+    - 'getaddrinfo ENOTFOUND'
+    - 'getaddrinfo EAI_AGAIN'
+    - 'could not translate host name'
+    - 'Name or service not known'
+message: 'The application is running but cannot reach a service it depends on.'
+fix: 'A service in the stack is not up, or is being addressed by a name nothing resolves. Check the service names in the compose file against what the application is configured with.'

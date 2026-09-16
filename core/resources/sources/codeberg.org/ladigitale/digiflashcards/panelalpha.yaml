@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  Digiflashcards is a Vue 3 + Vite single-page application with a small PHP
+  backend in inc/ (SQLite by default, no database server). Its build copies
+  .env.production into the bundle and fails without it, so the prepare hook
+  writes a default one; the PHP strategy then serves the built dist/ tree,
+  which carries both the SPA and the inc/ endpoints it calls.
+extends: php
+docroot: dist

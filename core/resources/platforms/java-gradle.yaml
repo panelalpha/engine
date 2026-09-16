@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=./_schema.json
+id: java-gradle
+strategy: java
+label: 'Java (Gradle)'
+priority: 745
+runtime: command
+port: 8080
+requires:
+  java: runtime
+detect:
+  any:
+    - file: build.gradle
+    - file: build.gradle.kts
+  # A repository carrying both build files is Maven's. Gradle is frequently
+  # the alternative build in a Maven project -- spring-petclinic ships one --
+  # and the reverse is rare.
+  #
+  # Said here rather than left to priority, because priority decided this
+  # differently from the runtime and the two disagreed in a way nothing
+  # caught: java-gradle (745) outranked java (740), so the *commands* came
+  # from Gradle, while JavaRuntime::resolve() and imageFor() both check
+  # pom.xml first, so the *image* and the requirement came from Maven. The
+  # deploy then built `target/` with mvn and started a container looking for
+  # `build/libs/*.jar`. One rule, in one place, for all three.
+  none:
+    - file: pom.xml
+commands:
+  - id: gradle-build
+    stage: build
+    run: 'gradle --no-daemon -x test build'
+  - id: serve
+    stage: start
+    serve: true
+    run: 'java -jar build/libs/*.jar'
+commands_from:
+  serve: java.start-gradle

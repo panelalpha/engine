@@ -1,0 +1,69 @@
+# Backups
+
+A backup is a complete snapshot of one project: its files, its stored data volumes, and its databases.
+
+Two things to know before you rely on this:
+
+1. **Backups only run when you ask.** The engine has no built-in schedule. If you need nightly backups, you schedule them yourself from outside the engine.
+2. **Only repository-deployed projects can be backed up.** Traditional PHP hosting accounts answer "not supported".
+
+## First, somewhere to put them
+
+A backup has to be written somewhere, and that somewhere is called a **store**. You set one up once, and every future backup goes into it.
+
+| Kind | Where the files go |
+|---|---|
+| `local` | A folder on this VPS |
+| `s3` | An S3-compatible bucket |
+| `ftp` | A folder on an FTP server |
+| `ftps` | Same, over TLS |
+| `sftp` | A folder on an SSH server |
+
+If the assistant cannot create a store, see [Decide what the assistant may do](../04-connecting-your-ai/your-assistant.md#decide-what-the-assistant-may-do).
+
+```text
+Create a backup store on this host at /var/backups.
+```
+
+**A store on the same VPS as the engine does not protect you from losing the VPS.** It is fine for "I am about to do something risky and want to be able to undo it". For real protection against disk failure or the VPS being lost, use a remote store.
+
+To check the engine can actually reach a remote store before you depend on it:
+
+```text
+Test that backup store.
+```
+
+## Taking a backup
+
+```text
+Create a backup of this project.
+```
+
+You get a backup ID and a status. Wait for `completed` - a backup of a large site takes a while.
+
+## Restoring
+
+```text
+List the backups for this project.
+Restore last backup onto this project.
+```
+
+**A restore overwrites the live project.** Anything created since that backup was taken is gone. Always list the backups and check the date on the one you are about to restore before you confirm it. Your assistant will ask you to confirm; that confirmation is required and not a formality.
+
+## Troubleshooting
+
+**"Not supported."**
+This is a traditional PHP hosting account, not a repository-deployed project. Backups do not run on those.
+
+**A 404 error when creating a backup.**
+The store name or ID is wrong. Ask to list the stores first and use the exact name.
+
+**The backup fails partway on a large site.**
+Usually disk space on the destination, or a timeout to a remote store. Check free space on the target, and test the store.
+
+**How do I schedule these?**
+The engine will not do it for you. Use `cron` on your VPS to call `pae project:backup:create`. Do not use a project's own cron jobs for this - those run inside the project and cannot reach the engine's backup system.
+
+## From the server
+
+Creating and restoring backups, and setting up a store: [CLI commands](../06-commands/pae-cli.md#backups).

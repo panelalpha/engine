@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: wordpress
+strategy: php
+label: WordPress
+priority: 937
+runtime: php
+port: 8000
+docroot: .
+# WordPress is MySQL or nothing, and it ships no .env and no compose file to
+# say so. Without this it reaches its own installer and stops on the database
+# step with nothing to type in.
+database: mysql
+env:
+  APP_ENV: production
+  LOG_CHANNEL: stderr
+requires:
+  php: runtime
+# The distribution tree -- what WordPress.org ships and what
+# github.com/WordPress/WordPress mirrors. wp-settings.php is the file
+# wp-config.php hands control to, and wp-includes/version.php is the one that
+# is only ever WordPress; together they do not match a theme, a plugin or a
+# checkout that merely vendors WordPress somewhere below it.
+detect:
+  all:
+    - path: wp-settings.php
+    - path: wp-login.php
+    - path: wp-includes/version.php
+    - path: wp-admin/index.php
+commands:
+  - id: wp-config
+    stage: [install, upgrade]
+    description: 'WordPress ships no wp-config.php and calls wp_die() without one, which is a 500 before anything else can go wrong -- so the file has to exist before the first request. Written once and never overwritten, so a site that has been configured by hand keeps its own file. The credentials are read from the environment rather than baked in, so rotating the account''s MySQL password does not strand the site, and no secret is written to disk. WP_HOME/WP_SITEURL come from APP_URL so WordPress does not canonicalise visitors into a redirect loop, and X-Forwarded-Proto is honoured because TLS is terminated at the proxy, not in the container.'
+    run: 'test -f /app/wp-config.php || { printf ''<?php\n/* Written by PanelAlpha on first deploy. Edit freely; it is never overwritten. */\ndefine("DB_NAME", getenv("DB_DATABASE"));\ndefine("DB_USER", getenv("DB_USERNAME"));\ndefine("DB_PASSWORD", getenv("DB_PASSWORD"));\ndefine("DB_HOST", getenv("DB_HOST") . ":" . (getenv("DB_PORT") ?: "3306"));\ndefine("DB_CHARSET", "utf8mb4");\ndefine("DB_COLLATE", "");\n''; for k in AUTH_KEY SECURE_AUTH_KEY LOGGED_IN_KEY NONCE_KEY AUTH_SALT SECURE_AUTH_SALT LOGGED_IN_SALT NONCE_SALT; do printf ''define("%s", "%s");\n'' "$k" "$(head -c 32 /dev/urandom | od -An -tx1 | tr -d "[:space:]")"; done; printf ''$table_prefix = "wp_";\ndefine("WP_DEBUG", false);\nif (getenv("APP_URL")) { define("WP_HOME", getenv("APP_URL")); define("WP_SITEURL", getenv("APP_URL")); }\nif ((isset($_SERVER["HTTP_X_FORWARDED_PROTO"]) ? $_SERVER["HTTP_X_FORWARDED_PROTO"] : "") === "https") { $_SERVER["HTTPS"] = "on"; }\nif (!defined("ABSPATH")) { define("ABSPATH", __DIR__ . "/"); }\nrequire_once ABSPATH . "wp-settings.php";\n''; } > /app/wp-config.php'

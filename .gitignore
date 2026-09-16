@@ -1,0 +1,60 @@
+.vscode
+.env
+.env-core
+scripts/monit.conf
+scripts/monit-script.sh
+core/tests/sessions/*/.env
+core/tests/sessions/*/cache.json
+users/*
+version
+crt
+awstats-config
+litespeed-config
+webserver-logs
+pureftpd
+nginx-proxy-logs/*
+nginx-proxy-conf.d/*
+docker-compose.yml-webserver
+config/logrotate/*
+# Runtime state the stack writes into its own bind mounts (logrotate status,
+# lighthouse reports); root-owned and per-host, never source.
+data/
+config/exim/*
+config/modsecurity/*
+config/sftp/*
+config/pure-ftpd/*
+webserver-config/*
+build/*
+# Runtime artifacts of an engine installed straight from a checkout — what
+# bootstrap-from-source.sh and scripts/engine-container.sh create in place.
+logs/
+core/supervisord.pid
+
+# API test suite (tests/api) — build artifacts
+tests/api/node_modules
+tests/api/.playwright
+tests/api/playwright-report
+tests/api/test-results
+tests/api/env/.env*
+!tests/api/env/.env.example
+
+# dind-test harness composer deps (composer.json/lock are tracked)
+scripts/dind-test/vendor
+
+# The supported-apps backlog the batch runner works through, regenerated per
+# run by scripts/fetch-apps.py (it lists issues still unlabeled upstream, so it
+# is stale within minutes and differs per operator). scripts/app-support-batch.py
+# takes it as --apps; the token it is fetched with is not committed either.
+scripts/apps.json
+
+# Generated locally; not published with operator docs.
+docs/mcp-catalogue.html
+
+# local editor / assistant state
+.idea/
+.aider-desk/
+.aider.input.history
+data/redis/
+.agents/
+.aider*
+scripts/__pycache__/

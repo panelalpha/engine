@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: django
+label: Django
+priority: 800
+runtime: command
+port: 8000
+env:
+  PYTHONUNBUFFERED: '1'
+requires:
+  python: runtime
+detect:
+  # Not `path: manage.py`: that is the repository root only, and
+  # `django-admin startproject` run inside a subdirectory is one of Django's
+  # two standard layouts (NetBox ships `netbox/manage.py`). Those projects fell
+  # through to the generic `python` platform, which has neither of the two
+  # commands below -- so the site came up against an unmigrated database with
+  # no static files and still answered 200. See DjangoProbe.
+  probe: django
+commands:
+  - id: pip-install
+    stage: build
+    role: dependencies
+    when:
+      file: requirements.txt
+    run: 'python -m venv .venv && .venv/bin/pip install -r requirements.txt'
+  - id: collectstatic
+    stage: build
+    run: '.venv/bin/python manage.py collectstatic --noinput'
+    optional: true
+  - id: migrate
+    stage:
+      - install
+      - upgrade
+    run: '.venv/bin/python manage.py migrate --noinput'
+    timeout: 600
+  - id: serve
+    stage: start
+    serve: true
+    run: '.venv/bin/python manage.py runserver 0.0.0.0:8000'
+# The three manage.py commands are resolved rather than literal: `manage.py` is
+# only at the repository root in one of Django's two layouts, and the `run:`
+# above is what a root-layout project gets. `serve` also upgrades to a WSGI or
+# ASGI server when the project declared one -- `runserver` is the development
+# server and says so on every boot.
+commands_from:
+  pip-install: python.install
+  collectstatic: django.collectstatic
+  migrate: django.migrate
+  serve: django.start

@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<psalm>
+    <projectFiles>
+        <directory name="./" />
+        <ignoreFiles allowMissingFiles="true">
+            <directory name="vendor"/>
+            <directory name="custom-vendor"/>
+        </ignoreFiles>
+    </projectFiles>
+    <enableExtensions>
+        <extension name="xdebug"/>
+    </enableExtensions>
+    <issueHandlers>
+        <PropertyNotSetInConstructor>
+            <errorLevel type="suppress">
+                <referencedProperty name="Illuminate\Console\Command::$laravel" />
+                <referencedProperty name="Illuminate\Console\Command::$name" />
+                <referencedProperty name="Illuminate\Console\Concerns\InteractsWithIO::$input" />
+                <referencedProperty name="Illuminate\Console\Concerns\InteractsWithIO::$output" />
+                <referencedProperty name="Illuminate\Console\Concerns\InteractsWithIO::$components" />
+                <referencedProperty name="Illuminate\Session\DatabaseSessionHandler::$exists" />
+                <referencedProperty name="Illuminate\Foundation\Http\FormRequest::$container" />
+                <referencedProperty name="Illuminate\Foundation\Http\FormRequest::$redirector" />
+                <referencedProperty name="Illuminate\Foundation\Http\FormRequest::$redirect" />
+                <referencedProperty name="Illuminate\Foundation\Http\FormRequest::$redirectRoute" />
+                <referencedProperty name="Illuminate\Foundation\Http\FormRequest::$redirectAction" />
+                <referencedProperty name="Illuminate\Foundation\Http\FormRequest::$validator" />
+                <referencedProperty name="Illuminate\Http\Request::$convertedFiles" />
+                <referencedProperty name="Illuminate\Http\Request::$userResolver" />
+                <referencedProperty name="Illuminate\Http\Request::$routeResolver" />
+                <referencedProperty name="Symfony\Component\HttpFoundation\Request::$session" />
+                <referencedProperty name="Illuminate\Http\Resources\Json\ResourceCollection::$collects" />
+                <referencedProperty name="Illuminate\Http\Resources\Json\ResourceCollection::$collection" />
+                <referencedProperty name="Illuminate\Queue\InteractsWithQueue::$job" />
+                <referencedProperty name="Illuminate\Bus\Batchable::$batchId" />
+                <referencedProperty name="Illuminate\Database\Eloquent\Model::$table" />
+                <referencedProperty name="Illuminate\Database\Eloquent\Concerns\HasAttributes::$dateFormat" />
+                <referencedProperty name="Illuminate\Notifications\Notification::$id" />
+                <referencedProperty name="Laravel\Sanctum\HasApiTokens::$accessToken" />
+                <referencedProperty name="Illuminate\Foundation\Testing\TestCase::$app" />
+                <referencedProperty name="Illuminate\Foundation\Testing\TestCase::$callbackException" />
+                <referencedProperty name="Illuminate\Foundation\Testing\WithFaker::$faker" />
+                <referencedProperty name="Illuminate\Routing\Router::$currentRequest" />
+            </errorLevel>
+        </PropertyNotSetInConstructor>
+    </issueHandlers>
+</psalm>

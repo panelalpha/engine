@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=./_schema.json
+id: compose
+label: 'Docker Compose'
+priority: 980
+runtime: compose
+detect:
+  probe: compose-usable
+commands: {  }

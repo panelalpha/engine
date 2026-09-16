@@ -1,0 +1,5 @@
+#!/bin/sh
+case "$1" in
+  *sername*) printf '%s\n' git ;;
+  *) printf '%s' '{{ encoded_token }}' | base64 -d ;;
+esac

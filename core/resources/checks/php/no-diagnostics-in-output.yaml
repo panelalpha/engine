@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../_schema.json
+#
+# PHP's warnings and deprecations leaking into the page.
+#
+# A warning, not an error, and the distinction is the whole reason severity
+# exists: the application works. What it is doing is printing its own
+# diagnostics to visitors, which breaks output that must start with a header
+# or be valid JSON, and hands anyone reading the source a list of file paths.
+# Worth a sentence in the deploy log; not worth telling the customer their
+# deploy did not work.
+#
+# PHP's own markup again, so a page containing the ordinary English word
+# "warning" is not reported.
+id: no-diagnostics-in-output
+severity: warning
+expect:
+  body_not:
+    - '<b>Warning</b>:'
+    - '<b>Notice</b>:'
+    - '<b>Deprecated</b>:'
+message: 'The application is printing PHP warnings into its pages.'
+fix: 'Turn display_errors off for this project, and fix what the messages name.'

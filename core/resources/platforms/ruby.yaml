@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=./_schema.json
+id: ruby
+label: Ruby
+priority: 950
+runtime: command
+port: 3000
+# Gems go in the project, not in the image -- the same move PHP makes with
+# vendor/ and Python with .venv. BUNDLE_PATH is read by `bundle install` and
+# by `bundle exec` alike, so one variable puts them there and finds them
+# again, with no command rewriting.
+env:
+  BUNDLE_PATH: /app/vendor/bundle
+  BUNDLE_WITHOUT: 'development:test'
+requires:
+  ruby: runtime
+  # Rails apps with a JS bundler need Node to build assets and never at
+  # runtime; one without package.json resolves to nothing.
+  node:
+    role: build
+    optional: true
+detect:
+  all:
+    - file: gemfile
+    - any:
+        -
+          file: config.ru
+        -
+          probe: procfile-web
+  none:
+    - path: config/application.rb
+commands:
+  - id: bundle-install
+    stage: build
+    role: dependencies
+    run: 'bundle install --jobs 4 --retry 3'
+  - id: serve
+    stage: start
+    serve: true
+    description: 'A Procfile web line wins when the repo has one; otherwise rackup serves config.ru.'
+    run: 'bundle exec rackup -o 0.0.0.0 -p 3000'

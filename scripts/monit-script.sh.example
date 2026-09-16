@@ -1,0 +1,4 @@
+#!/bin/bash
+mkdir -p /opt/panelalpha/log
+ps aux --sort=-%mem > /opt/panelalpha/log/monit_psdump_$(date +"%Y-%m-%d_%H-%M-%S").log
+docker stats --no-stream --format "table {{.Container}}\t{{.Name}}\t{{.MemUsage}}" | sort -k3 -h -r | head -n 2 | awk '{print $1}' | xargs docker restart

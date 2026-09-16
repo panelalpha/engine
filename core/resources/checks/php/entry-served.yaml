@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../_schema.json
+#
+# The webserver refusing `/` because it has no document to serve there.
+#
+# Measured on a live deploy: a PHP project whose index.php is gone -- deleted
+# over SFTP, or never there because the application's entry point is in
+# public/ -- answers 403 Forbidden, and until this existed that read as a
+# healthy application. 4xx is under the server-error threshold, so the port
+# probe passed it, the reachability comparison passed it, and the six-hourly
+# sweep recorded `serving: ok` for a site nobody could open.
+#
+# 403 only, and the narrowness is the point. A PHP front controller answering
+# 404 for `/` has made a routing decision, and nothing here can tell that from
+# a missing page -- an API that serves everything under /api is working. A 403
+# is not the application's answer at all: it is the webserver saying it has no
+# document for this directory and will not list it, which it says when the
+# index is missing or unreadable. Neither of those is a working site.
+#
+# The static sibling `nginx/entry-served` takes the harder line -- anything
+# that is not 2xx/3xx -- because a site of pages has no router to have an
+# opinion about `/`.
+id: entry-served
+severity: error
+serving: missing_entry
+expect:
+  status_not: [403]
+message: 'The front page is missing: / answered {status}.'
+explain: php-entry

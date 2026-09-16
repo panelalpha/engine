@@ -1,0 +1,16 @@
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    restart: unless-stopped
+    environment:
+      - N8N_DIAGNOSTICS_ENABLED=false
+    # n8n boots past 400 MB; the engine's default cap for an unlisted service
+    # is 512m, which V8 exits under before the editor ever listens.
+    mem_limit: 1g
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./docker:/home/node/panelalpha:ro
+    ports:
+      - "5678:5678"
+volumes:
+  n8n_data: {}

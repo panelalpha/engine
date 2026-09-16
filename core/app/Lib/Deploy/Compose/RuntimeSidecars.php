@@ -1,0 +1,505 @@
+<?php
+
+namespace App\Lib\Deploy\Compose;
+
+use App\Lib\Deploy\Sidecar\SidecarCredentials;
+use App\Lib\Deploy\Sidecar\SidecarEngine;
+use App\Lib\Deploy\Sidecar\ServiceRole;
+use Symfony\Component\Yaml\Yaml;
+
+/**
+ * The services a project's own compose file contributes to a deploy: its runtime
+ * datastores, and the environment pointing the application at them. Workstation
+ * services, published host ports and networks that do not exist in an account
+ * are dropped; what survives is hardened and has its credentials pinned.
+ *
+ * @phpstan-type SidecarExtract array{services: array<string, array<string, mixed>>, volumes: array<string, mixed>, env: array<string, string>, app_env: array<string, string>, app_mounts: list<string>, build_image: ?string, app_aliases: list<string>}
+ */
+final class RuntimeSidecars
+{
+    /** @var array{services: array<string, mixed>, volumes: array<string, mixed>, env: array<string, string>, app_env: array<string, string>, app_mounts: list<string>, build_image: ?string, app_aliases: list<string>} */
+    private const EMPTY = [
+        'services' => [], 'volumes' => [], 'env' => [], 'app_env' => [],
+        'app_mounts' => [], 'build_image' => null, 'app_aliases' => [],
+    ];
+
+    /** Sail's `laravel.test`: other services routinely depend on it, it never deploys. */
+    private const WORKSTATION_APP = 'laravel.test';
+
+    /** @var array<string, array<string, mixed>> */
+    private array $kept = [];
+
+    /** @var array<string, true> lowercase names of services left out */
+    private array $dropped = [];
+
+    /** @var array<string, string> env harvested from services that were dropped */
+    private array $harvested = [];
+
+    /**
+     * The workstation app service's own env, kept apart from `env` so it ranks
+     * below what the strategy generates.
+     *
+     * @var array<string, string>
+     */
+    private array $appEnv = [];
+
+    /** @var array<string, list<int>> ports each kept service declared, before hardening strips them */
+    private array $ports = [];
+
+    /**
+     * Named volumes the file's own app service mounts, taken before it is dropped.
+     *
+     * @var list<string>
+     */
+    private array $appMounts = [];
+
+    /**
+     * Names the dropped application went by, collected while reading so the
+     * aliases can be settled once every service has been seen.
+     *
+     * @var list<string>
+     */
+    private array $appServiceNames = [];
+
+    /**
+     * Service names and `container_name`s the generated `app` answers to, so a
+     * kept sibling's own config (an nginx `proxy_pass`) still resolves.
+     *
+     * @var list<string>
+     */
+    private array $appAliases = [];
+
+    /**
+     * @param array<string, mixed> $services the file's `services:` block
+     * @param array<string, mixed> $declaredVolumes its `volumes:` block
+     * @param bool $backingServicesOnly keep datastores only, dropping anything
+     *        that looks like the application itself
+     * @param callable(string): list<int>|null $imagePorts resolves an image
+     *        reference to the ports it declares; null when nobody can ask
+     * @param ?string $projectIdentity owner/repo being deployed, so its own
+     *        published image is recognised as the application
+     * @param ?string $placeholderSeed per-account secret `${VAR:?}` credentials
+     *        derive from; null leaves them unset
+     */
+    private function __construct(
+        private readonly array $services,
+        private readonly array $declaredVolumes,
+        private readonly bool $backingServicesOnly,
+        private readonly mixed $imagePorts,
+        private readonly ?string $projectIdentity,
+        private readonly ?int $accountMemoryMb = null,
+        private readonly ?string $placeholderSeed = null
+    ) {
+    }
+
+    /**
+     * @return array{services: array<string, array<string, mixed>>, volumes: array<string, mixed>, env: array<string, string>, app_env: array<string, string>}
+     */
+    public static function fromFile(
+        string $composePath,
+        bool $backingServicesOnly = false,
+        ?callable $imagePorts = null,
+        ?string $projectIdentity = null,
+        ?int $accountMemoryMb = null,
+        ?string $placeholderSeed = null
+    ): array {
+        $raw = is_file($composePath) && is_readable($composePath) ? @file_get_contents($composePath) : null;
+
+        return is_string($raw) && $raw !== ''
+            ? self::fromYaml($raw, $backingServicesOnly, $imagePorts, $projectIdentity, $accountMemoryMb, $placeholderSeed)
+            : self::EMPTY;
+    }
+
+    /**
+     * Customer project files are often unreadable by www-data, so the caller
+     * sudo-copies and hands the text over.
+     *
+     * @return array{services: array<string, array<string, mixed>>, volumes: array<string, mixed>, env: array<string, string>, app_env: array<string, string>}
+     */
+    public static function fromYaml(
+        string $raw,
+        bool $backingServicesOnly = false,
+        ?callable $imagePorts = null,
+        ?string $projectIdentity = null,
+        ?int $accountMemoryMb = null,
+        ?string $placeholderSeed = null
+    ): array {
+        $parsed = self::parse($raw);
+        if ($parsed === null) {
+            return self::EMPTY;
+        }
+
+        $extractor = new self(
+            $parsed['services'],
+            is_array($parsed['volumes'] ?? null) ? $parsed['volumes'] : [],
+            $backingServicesOnly,
+            $imagePorts,
+            $projectIdentity,
+            $accountMemoryMb,
+            $placeholderSeed
+        );
+
+        $result = $extractor->extract();
+        // The tag the file builds its application under, so the deploy builds
+        // under that name. Null for a template, whose `app` is a published image.
+        $result['build_image'] = $backingServicesOnly
+            ? null
+            : DeployCompose::builtImageNameFromYaml($raw);
+
+        return $result;
+    }
+
+
+
+    /**
+     * @return array{services: array<string, mixed>, volumes: array<string, mixed>}|null
+     */
+    private static function parse(string $raw): ?array
+    {
+        if ($raw === '') {
+            return null;
+        }
+        try {
+            $parsed = Yaml::parse($raw);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return is_array($parsed) && is_array($parsed['services'] ?? null) ? $parsed : null;
+    }
+
+    /**
+     * @return array{services: array<string, array<string, mixed>>, volumes: array<string, mixed>, env: array<string, string>, app_env: array<string, string>}
+     */
+    private function extract(): array
+    {
+        foreach ($this->services as $name => $service) {
+            $this->consider((string) $name, $service);
+        }
+        $this->clearOfAppService();
+        foreach ($this->kept as $name => $service) {
+            $this->kept[$name] = ServiceDependencies::withoutDropped($service, $this->dropped);
+        }
+        $this->collectAppAliases();
+
+        return $this->assemble();
+    }
+
+    /**
+     * @param mixed $service
+     */
+    private function consider(string $name, $service): void
+    {
+        if (!is_array($service)) {
+            $this->drop($name, []);
+
+            return;
+        }
+        // The file's own app service, replaced by a build of the same repo: it
+        // is dropped here, but its volumes are needed by the replacement.
+        $isApp = ServiceRole::isApplication($name, $service, $this->services, $this->projectIdentity);
+
+        if ($this->isOptIn($service) || $this->isWorkstationOnly($name, $service) || !$this->hasImage($service)
+            || $this->isBuiltHere($name, $service)) {
+            if ($isApp) {
+                $this->appMounts = self::namedMountsOf($service, array_keys($this->declaredVolumes));
+                // The replacement is built from the same repository, so the
+                // dropped service's env still applies (dpaste's DATABASE_URL).
+                $this->appEnv += SidecarCredentials::envFromWorkstationAppService(
+                    $service,
+                    $this->placeholderSeed
+                );
+            }
+            // A proxy in front names this service in its own config, so the
+            // generated `app` has to answer to the name. Settled in assemble().
+            if ($this->isReplacedByOurBuild($name, $service)) {
+                $containerName = $service['container_name'] ?? null;
+                $this->appServiceNames = ServiceAliases::normalised(array_merge(
+                    $this->appServiceNames,
+                    [$name, is_string($containerName) ? $containerName : '']
+                ));
+            }
+            $this->drop($name, $service);
+
+            return;
+        }
+
+        $observedPorts = $this->observedPorts($service);
+        // Captured before hardening strips `ports:` below: the published port is
+        // evidence of what the service is.
+        $this->ports[$name] = SidecarEngine::allPorts($service, $observedPorts);
+
+        if ($this->backingServicesOnly && !$this->isBacking($name, $service, $observedPorts)) {
+            $this->drop($name, $service);
+
+            return;
+        }
+
+        $this->keep($name, $service);
+    }
+
+    /**
+     * @param array<string, mixed> $service
+     */
+    private function drop(string $name, array $service): void
+    {
+        $this->dropped[strtolower($name)] = true;
+        $this->harvested += SidecarCredentials::envFromDroppedAppService($service);
+        // The app we build takes this service's place, so it keeps its settings;
+        // mailpit and vite do not.
+        if (!DevServices::isDevSidecar($name, $service) && ComposeFileInspector::isWorkstationAppService($service)) {
+            $this->appEnv += SidecarCredentials::envFromWorkstationAppService($service, $this->placeholderSeed);
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $service
+     */
+    private function keep(string $name, array $service): void
+    {
+        unset($service['ports'], $service['networks'], $service['extra_hosts'], $service['profiles']);
+        if ($this->placeholderSeed !== null && isset($service['environment'])) {
+            $service['environment'] = SidecarCredentials::withRequiredSecrets($service['environment'], $this->placeholderSeed);
+        }
+
+        $this->kept[$name] = ServiceDependencies::withoutDropped(
+            $service,
+            $this->dropped + [self::WORKSTATION_APP => true]
+        );
+    }
+
+    /**
+     * A kept sidecar named `app` would clash with the generated app, so it moves
+     * to a free name and every reference follows.
+     */
+    private function clearOfAppService(): void
+    {
+        foreach (array_keys($this->kept) as $name) {
+            $name = (string) $name;
+            if (strcasecmp($name, GeneratedCompose::APP_SERVICE) !== 0
+                || ServiceRole::isApplication($name, $this->kept[$name], $this->services, $this->projectIdentity)) {
+                continue;
+            }
+            $to = $this->freeName($name . '-sidecar');
+            $kept = [];
+            foreach ($this->kept as $other => $service) {
+                $kept[(string) $other === $name ? $to : $other] = ServiceDependencies::renamed($service, $name, $to);
+            }
+            $this->kept = $kept;
+            $this->ports[$to] = $this->ports[$name] ?? [];
+            unset($this->ports[$name]);
+        }
+    }
+
+    private function freeName(string $base): string
+    {
+        $taken = array_map(
+            static fn ($n): string => strtolower((string) $n),
+            array_merge(array_keys($this->services), array_keys($this->kept))
+        );
+        $candidate = $base;
+        for ($i = 2; in_array(strtolower($candidate), $taken, true); $i++) {
+            $candidate = $base . '-' . $i;
+        }
+
+        return $candidate;
+    }
+
+    /**
+     * `build:` means the image comes from this repo, not a sidecar image. A
+     * catalogued datastore is still pulled.
+     *
+     * @param array<string, mixed> $service
+     */
+    private function isBuiltHere(string $name, array $service): bool
+    {
+        return isset($service['build']) && !ServiceRole::isKnownDatastore($name, $service);
+    }
+
+    /**
+     * Whether this deploy's build takes the service's place, so the generated
+     * `app` has to answer to its name: a kept sibling that reaches it by name
+     * carries the reference in its own configuration file.
+     *
+     * @param array<string, mixed> $service
+     */
+    private function isReplacedByOurBuild(string $name, array $service): bool
+    {
+        // A dev sidecar that builds (vite serves the same source with a dev
+        // server) is not replaced by the app, so its name is not aliased to it.
+        if (DevServices::isDevSidecar($name, $service)) {
+            return false;
+        }
+
+        return isset($service['build']) && !ServiceRole::isKnownDatastore($name, $service);
+    }
+
+    /**
+     * Settles the names the generated app answers to, once the whole file has
+     * been read.
+     */
+    private function collectAppAliases(): void
+    {
+        if ($this->kept === [] || $this->appServiceNames === []) {
+            return;
+        }
+
+        // An alias a kept service already answers to would resolve to two
+        // containers, so the kept names win.
+        $taken = [];
+        foreach ($this->kept as $keptName => $keptService) {
+            $taken[strtolower((string) $keptName)] = true;
+            $keptContainer = is_array($keptService) ? ($keptService['container_name'] ?? null) : null;
+            if (is_string($keptContainer) && $keptContainer !== '') {
+                $taken[strtolower($keptContainer)] = true;
+            }
+        }
+
+        $this->appAliases = array_values(array_filter(
+            $this->appServiceNames,
+            static fn (string $alias): bool => !isset($taken[strtolower($alias)])
+        ));
+    }
+
+    /**
+     * @return array{services: array<string, array<string, mixed>>, volumes: array<string, mixed>, env: array<string, string>, app_env: array<string, string>}
+     */
+    private function assemble(): array
+    {
+        $volumes = NamedVolumes::usedBy($this->kept, $this->declaredVolumes);
+        $hardened = ComposeHarden::apply(
+            ['services' => $this->kept, 'volumes' => $volumes],
+            $this->accountMemoryMb,
+            // keep() already stripped `ports`, so the one-shot rules read the
+            // original file to see them.
+            $this->services
+        );
+        $services = is_array($hardened['services'] ?? null) ? $hardened['services'] : [];
+
+        $env = [];
+        foreach ($services as $name => $service) {
+            if (!is_array($service)) {
+                continue;
+            }
+            $ports = $this->ports[$name] ?? [];
+            $services[$name] = SidecarCredentials::pinSidecarCredentials((string) $name, $service, $ports);
+            // Union keeping what is set: of two candidates the first declared wins.
+            $env += SidecarCredentials::envForSidecar((string) $name, $services[$name], $ports);
+        }
+
+        return [
+            'services' => $services,
+            'volumes' => is_array($hardened['volumes'] ?? null) ? $hardened['volumes'] : $volumes,
+            'env' => $env + $this->harvested,
+            'app_env' => $this->appEnv,
+            'app_mounts' => $this->appMounts,
+            'app_aliases' => $this->appAliases,
+        ];
+    }
+
+    /**
+     * A `profiles:` gate is opt-in: `docker compose up` without `--profile`
+     * never starts the service, so adopting it deploys something nobody asked
+     * for. OpenCart gates postgres, redis, memcached and adminer that way.
+     *
+     * @param array<string, mixed> $service
+     */
+    private function isOptIn(array $service): bool
+    {
+        $profiles = $service['profiles'] ?? null;
+        if (is_array($profiles)) {
+            return $profiles !== [];
+        }
+
+        return is_string($profiles) && trim($profiles) !== '';
+    }
+
+    /**
+     * @param array<string, mixed> $service
+     */
+    private function isWorkstationOnly(string $name, array $service): bool
+    {
+        return DevServices::isDevSidecar($name, $service)
+            || ComposeFileInspector::isWorkstationAppService($service);
+    }
+
+    /**
+     * @param array<string, mixed> $service
+     */
+    private function hasImage(array $service): bool
+    {
+        return trim((string) ($service['image'] ?? '')) !== '';
+    }
+
+    /**
+     * @param array<string, mixed> $service
+     * @return list<int>
+     */
+    private function observedPorts(array $service): array
+    {
+        $resolve = $this->imagePorts;
+
+        return $resolve === null ? [] : $resolve((string) ($service['image'] ?? ''));
+    }
+
+    /**
+     * The named volumes a service mounts, as compose volume strings: only
+     * `name:/container/path` where `name` is declared in the file's `volumes:`
+     * block. A bind mount (`./x:/y`) is excluded — it would put the account's
+     * checkout inside the container.
+     *
+     * @param array<string, mixed> $service
+     * @param list<string> $declared names in the file's `volumes:` block
+     * @return list<string>
+     */
+    private static function namedMountsOf(array $service, array $declared): array
+    {
+        $mounts = $service['volumes'] ?? null;
+        if (!is_array($mounts)) {
+            return [];
+        }
+        $known = array_map('strtolower', $declared);
+        $kept = [];
+        foreach ($mounts as $mount) {
+            if (is_string($mount) && self::isNamedMount($mount, $known)) {
+                $kept[] = $mount;
+            }
+        }
+
+        return $kept;
+    }
+
+    /**
+     * `dbdata:/var/lib/app`, and only when `dbdata` is declared by the file.
+     *
+     * @param list<string> $declaredLc lowercase names in the `volumes:` block
+     */
+
+    private static function isNamedMount(string $mount, array $declaredLc): bool
+    {
+        $parts = explode(':', $mount);
+        if (count($parts) < 2) {
+            return false;
+        }
+        if (str_contains($parts[0], '/') || !in_array(strtolower(trim($parts[0])), $declaredLc, true)) {
+            return false;
+        }
+
+        return trim($parts[1]) !== '';
+    }
+
+    /**
+     * @param array<string, mixed> $service
+     * @param list<int> $observedPorts
+     */
+    private function isBacking(string $name, array $service, array $observedPorts): bool
+    {
+        return SidecarEngine::isBackingService(
+            $name,
+            $service,
+            $observedPorts,
+            $this->services,
+            $this->projectIdentity
+        );
+    }
+}

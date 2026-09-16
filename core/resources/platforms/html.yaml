@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=./_schema.json
+#
+# A site that is only documents. It shares the `static` strategy with
+# static.yaml -- same nginx, same mount, same port -- and differs only in how
+# the front page is found: static.yaml wants a file named `index`, this walks
+# the tree, refuses anything that is not a browser asset, and works the
+# entrance out.
+#
+# Priority sits directly below `static`, so a site that names its own index is
+# still `Static` and reads as it always did. Below that there is nothing left
+# but Railpack, which cannot build a page out of HTML, and the fallback recipe,
+# which used to bury these sites under the engine's own placeholder.
+id: html
+strategy: static
+label: 'HTML site'
+priority: 90
+runtime: nginx
+port: 8080
+detect:
+  probe: html-site
+  none:
+    - file: composer.json
+    - file: package.json
+    - file: gemfile
+    - file: go.mod
+    - file: cargo.toml
+    - file: requirements.txt
+    # Matches python.yaml's predicate: a pyproject that declares no project
+    # is tool config, not Python, and a directory of documents around it is
+    # still a site. See PyprojectProbe.
+    - probe: pyproject
+    - file: pipfile
+    - file: setup.py
+    - file: pom.xml
+    - file: build.gradle
+    - file: build.gradle.kts
+    # Same test the Django recipe detects with: a subdirectory-layout
+    # Django project is still an application, not a directory of documents.
+    - probe: django
+commands: {  }

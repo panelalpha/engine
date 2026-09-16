@@ -1,0 +1,9 @@
+services:
+  app:
+    # The image's ENTRYPOINT is a bare `ntfy`, and the binary has subcommands:
+    # with no arguments it prints its help and exits 0, so the container
+    # restart-loops and nothing ever listens. The repository's own
+    # docker-compose.yml passes `command: serve` for the same reason — this is
+    # that line, layered onto the compose the dockerfile strategy generates
+    # rather than duplicating it.
+    command: ["serve"]

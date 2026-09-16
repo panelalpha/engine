@@ -1,0 +1,5 @@
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  Umami on the compose stack its repository ships, with an override that
+  injects the generated secrets and mounts the app-management helper, so the
+  upstream file is never modified.

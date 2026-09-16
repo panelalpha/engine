@@ -1,0 +1,46 @@
+<?php
+
+namespace App\Providers;
+
+use App\Lib\Deploy\Platform\DeployPlanContext;
+use App\Lib\Deploy\Platform\RecipeChoiceContext;
+use App\Models\PersonalAccessToken;
+use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
+use Illuminate\Http\Request;
+use Illuminate\Support\ServiceProvider;
+use Laravel\Sanctum\Sanctum;
+
+class AppServiceProvider extends ServiceProvider
+{
+    public function register()
+    {
+        Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
+
+        // One per request, which is one per deploy: the plan a deploy request
+        // carried has to be readable from inside the pipeline, and the
+        // pipeline builds a fresh project object on every call. See
+        // {@see DeployPlanContext}.
+        $this->app->singleton(DeployPlanContext::class);
+
+        // The same lifetime for the same reason, one question earlier: not
+        // which commands this deploy runs, but which recipe it runs them from.
+        $this->app->singleton(RecipeChoiceContext::class);
+    }
+
+    public function boot()
+    {
+        // WP-CLI arguments are passed through verbatim, and an empty one is
+        // meaningful: `wp rewrite structure ''` is how the plain permalink
+        // structure is set. The global ConvertEmptyStringsToNull would turn it
+        // into null, which the controller then rejects as a non-string.
+        //
+        // Both prefixes, because routes/api.php registers the project route
+        // group under `projects` and `users` alike -- matching only the old one
+        // left this broken on the path new clients and the generated wp_cli_run
+        // MCP tool actually call.
+        ConvertEmptyStringsToNull::skipWhen(static function (Request $request): bool {
+            return $request->is('api/projects/*/wp-cli/command')
+                || $request->is('api/users/*/wp-cli/command');
+        });
+    }
+}

@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: nextjs-export
+strategy: nextjs
+label: 'Next.js (export)'
+priority: 925
+runtime: nginx
+port: 8080
+output_directory: out
+requires:
+  node:
+    role: build
+detect:
+  all:
+    - probe: next-workspace
+    - any:
+        -
+          contains: { glob: next.config, pattern: 'output\s*:\s*[''"]export[''"]', regex: true }
+        -
+          contains: { path: package.json, pattern: 'next export' }
+commands:
+  - id: npm-install
+    stage: build
+    role: dependencies
+    run: '{{js.install}}'
+    description: "Resolved from the project's lockfile — npm ci, pnpm install --frozen-lockfile, yarn or bun."
+  - id: next-build
+    stage: build
+    run: '{{js.build:npx next build}}'
+    description: "The project's own build script wins over this default when package.json defines one."

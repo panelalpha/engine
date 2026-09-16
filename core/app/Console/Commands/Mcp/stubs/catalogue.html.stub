@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Engine MCP Catalogue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root {
+  --ground:#F7F8FA; --surface:#FFFFFF; --surface-2:#F1F3F7; --line:#DDE2EA; --line-soft:#E8ECF2;
+  --ink:#131820; --ink-2:#414B5A; --ink-3:#5A6472;
+  --accent:#2D5D7C; --accent-soft:#E7EFF5;
+  --ro:#0F7B6C; --ro-soft:#E2F1EE; --ro-line:#9CCEC4;
+  --de:#A8431A; --de-soft:#FAEBE2; --de-line:#E2B195;
+  --shadow:0 1px 2px rgba(19,24,32,.05), 0 1px 3px rgba(19,24,32,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:#0E1319; --surface:#161D26; --surface-2:#1B2430; --line:#2A3543; --line-soft:#222C38;
+    --ink:#E4E9EF; --ink-2:#AEB9C7; --ink-3:#8994A3;
+    --accent:#7FB2D0; --accent-soft:#1A2732;
+    --ro:#4FBFA9; --ro-soft:#122A27; --ro-line:#245049;
+    --de:#E08A5C; --de-soft:#2B1B12; --de-line:#5C3524;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 1px 3px rgba(0,0,0,.2);
+  }
+}
+:root[data-theme="dark"] {
+  --ground:#0E1319; --surface:#161D26; --surface-2:#1B2430; --line:#2A3543; --line-soft:#222C38;
+  --ink:#E4E9EF; --ink-2:#AEB9C7; --ink-3:#8994A3;
+  --accent:#7FB2D0; --accent-soft:#1A2732;
+  --ro:#4FBFA9; --ro-soft:#122A27; --ro-line:#245049;
+  --de:#E08A5C; --de-soft:#2B1B12; --de-line:#5C3524;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 1px 3px rgba(0,0,0,.2);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);
+ font-family:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;font-size:15px;line-height:1.55;
+ -webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px 96px}
+h1,h2,h3,.lab{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;text-wrap:balance}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace}
+
+header.top{border-bottom:1px solid var(--line);background:var(--surface);margin-bottom:36px}
+.top-in{max-width:1080px;margin:0 auto;padding:40px 24px 30px;display:flex;flex-direction:column;gap:16px}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0}
+h1{margin:0;font-size:clamp(28px,4vw,40px);font-weight:700;letter-spacing:-.015em}
+.sub{margin:0;color:var(--ink-2);max-width:64ch}
+.facts{display:flex;flex-wrap:wrap;gap:8px 10px;margin-top:4px}
+.fact{font-family:"IBM Plex Mono",monospace;font-size:12px;border:1px solid var(--line);border-radius:4px;
+ padding:4px 9px;color:var(--ink-2);background:var(--surface-2)}
+.fact b{color:var(--ink);font-weight:600}
+
+.band{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);
+ border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:40px}
+.stat{background:var(--surface);padding:16px 18px;display:flex;flex-direction:column;gap:3px}
+.stat .n{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:30px;font-weight:700;line-height:1;
+ font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.stat .lab{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.stat.ro .n{color:var(--ro)} .stat.de .n{color:var(--de)}
+
+h2{font-size:13px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);font-weight:600;
+ margin:0 0 14px;padding-bottom:9px;border-bottom:1px solid var(--line)}
+section.block{margin-bottom:44px}
+.note{color:var(--ink-2);max-width:66ch;margin:0 0 18px}
+
+table{width:100%;border-collapse:collapse;font-size:14px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+th,td{text-align:left;padding:9px 14px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+th{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+ color:var(--ink-3);background:var(--surface-2)}
+tr:last-child td{border-bottom:0}
+td code{font-size:13px;color:var(--ink)}
+td.st{font-family:"IBM Plex Mono",monospace;font-size:11.5px;white-space:nowrap}
+tr.yes td.st{color:var(--ro)} tr.no td.st{color:var(--ink-3)}
+tr.no td code{color:var(--ink-3)}
+
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:20px;
+ position:sticky;top:0;background:var(--ground);padding:12px 0;z-index:5;border-bottom:1px solid var(--line)}
+#q{flex:1 1 260px;min-width:200px;font-family:"IBM Plex Mono",monospace;font-size:13px;padding:8px 11px;
+ border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink)}
+#q:focus{outline:2px solid var(--accent);outline-offset:1px}
+.filters{display:flex;gap:6px}
+.f{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.04em;
+ padding:7px 12px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink-2);cursor:pointer}
+.f:hover{border-color:var(--accent)}
+.f:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.f[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.f.ro[aria-pressed="true"]{background:var(--ro-soft);border-color:var(--ro-line);color:var(--ro)}
+.f.de[aria-pressed="true"]{background:var(--de-soft);border-color:var(--de-line);color:var(--de)}
+.count-live{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-3);white-space:nowrap}
+
+.group{margin-bottom:14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);overflow:hidden}
+.group-head{width:100%;display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--surface-2);
+ border:0;border-bottom:1px solid var(--line);cursor:pointer;text-align:left;color:var(--ink);font:inherit}
+.group-head:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.group-head h3{margin:0;font-size:15px;font-weight:600;flex:1}
+.chev{width:0;height:0;border-left:5px solid var(--ink-3);border-top:4px solid transparent;
+ border-bottom:4px solid transparent;transition:transform .15s ease;flex:none}
+.group-head[aria-expanded="true"] .chev{transform:rotate(90deg)}
+.counts{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-3);display:flex;align-items:center;gap:5px;
+ font-variant-numeric:tabular-nums}
+.counts b{color:var(--ink);font-weight:600;margin-right:4px}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-left:4px}
+.dot.ro{background:var(--ro)} .dot.de{background:var(--de)}
+.group-head[aria-expanded="false"] + .tools{display:none}
+
+.tools{display:flex;flex-direction:column}
+.tool{padding:13px 16px 13px 20px;border-bottom:1px solid var(--line-soft);position:relative;
+ display:flex;flex-direction:column;gap:7px}
+.tool:last-child{border-bottom:0}
+.tool::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px}
+.tool.readonly::before{background:var(--ro)}
+.tool.destructive::before{background:var(--de)}
+.tool-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tool-name{font-size:13.5px;font-weight:600;color:var(--ink);word-break:break-all}
+.risk-chip{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:10.5px;font-weight:700;letter-spacing:.09em;
+ text-transform:uppercase;padding:2px 7px;border-radius:3px;white-space:nowrap}
+.risk-chip.readonly{background:var(--ro-soft);color:var(--ro);border:1px solid var(--ro-line)}
+.risk-chip.destructive{background:var(--de-soft);color:var(--de);border:1px solid var(--de-line)}
+.tool-desc{margin:0;font-size:14px;color:var(--ink-2);max-width:70ch}
+.tool-extra{color:var(--ink-3)}
+.tool-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.verb{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;letter-spacing:.06em;
+ padding:2px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink-3);background:var(--surface-2)}
+.vGET{color:var(--ro);border-color:var(--ro-line)}
+.vDELETE{color:var(--de);border-color:var(--de-line)}
+.vPOST,.vPUT{color:var(--de);border-color:var(--de-line)}
+.path{font-size:12px;color:var(--ink-3);word-break:break-all}
+.params{display:flex;flex-wrap:wrap;gap:5px}
+.pill{font-family:"IBM Plex Mono",monospace;font-size:11px;padding:2px 7px;border-radius:3px;
+ background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2)}
+.pill i{font-style:normal;color:var(--ink-3);margin-left:5px;opacity:.75}
+.pill.req{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.noparams{font-size:11.5px;color:var(--ink-3);font-style:italic}
+.hidden{display:none !important}
+.empty{padding:28px;text-align:center;color:var(--ink-3);font-size:14px}
+footer{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);color:var(--ink-3);font-size:13px}
+footer code{font-size:12px}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+
+<header class="top"><div class="top-in">
+<p class="eyebrow">Model Context Protocol · server surface</p>
+<h1>Engine MCP Catalogue</h1>
+<p class="sub">Everything the PanelAlpha Engine MCP server answers: the protocol methods it implements, and all {{TOTAL}} tools it exposes. Served by <code>laravel/mcp</code> at <code>POST /mcp</code>. Tool names are <code>&lt;resource&gt;_&lt;action&gt;</code> and never contain their parameters.</p>
+<div class="facts">
+<span class="fact">package <b>laravel/mcp {{PACKAGE}}</b></span>
+<span class="fact">protocol <b>{{PROTOCOL}}</b></span>
+<span class="fact">server <b>PanelAlpha Engine v1.0.0</b></span>
+<span class="fact">auth <b>Bearer token</b></span>
+</div>
+</div></header>
+
+<div class="wrap">
+
+<div class="band">
+<div class="stat"><span class="n">{{TOTAL}}</span><span class="lab">tools</span></div>
+<div class="stat ro"><span class="n">{{READONLY}}</span><span class="lab">read-only</span></div>
+<div class="stat de"><span class="n">{{DESTRUCTIVE}}</span><span class="lab">destructive</span></div>
+<div class="stat"><span class="n">{{GROUPS}}</span><span class="lab">groups</span></div>
+<div class="stat"><span class="n">10</span><span class="lab">protocol methods</span></div>
+</div>
+
+<section class="block">
+<h2>Protocol methods</h2>
+<p class="note">JSON-RPC methods the server itself answers. Capabilities advertised on <code>initialize</code> are <code>tools</code>, <code>resources</code> and <code>prompts</code> — but only <code>tools</code> is populated, so the resource and prompt methods work and return empty sets.</p>
+<div class="tablewrap"><table>
+<thead><tr><th>Method</th><th>Behaviour</th><th>Status</th></tr></thead>
+<tbody><tr class="yes"><td><code>initialize</code></td><td>Opens the session and negotiates the protocol version.</td><td class="st">supported</td></tr><tr class="yes"><td><code>notifications/initialized</code></td><td>Client signals it is ready. Accepted with no reply, per spec.</td><td class="st">supported</td></tr><tr class="yes"><td><code>ping</code></td><td>Liveness check.</td><td class="st">supported</td></tr><tr class="yes"><td><code>tools/list</code></td><td>Lists the tools below. Paginated.</td><td class="st">supported</td></tr><tr class="yes"><td><code>tools/call</code></td><td>Runs one tool.</td><td class="st">supported</td></tr><tr class="yes"><td><code>resources/list</code></td><td>Returns an empty set — no resources are registered.</td><td class="st">supported</td></tr><tr class="yes"><td><code>resources/read</code></td><td>Reads a resource by URI.</td><td class="st">supported</td></tr><tr class="yes"><td><code>resources/templates/list</code></td><td>Returns an empty set.</td><td class="st">supported</td></tr><tr class="yes"><td><code>prompts/list</code></td><td>Returns an empty set — no prompts are registered.</td><td class="st">supported</td></tr><tr class="yes"><td><code>prompts/get</code></td><td>Returns a prompt by name.</td><td class="st">supported</td></tr><tr class="no"><td><code>completion/complete</code></td><td>Refused — the completions capability is not enabled.</td><td class="st">not supported</td></tr><tr class="no"><td><code>logging/setLevel</code></td><td>Not implemented by this server.</td><td class="st">not supported</td></tr><tr class="no"><td><code>sampling/createMessage</code></td><td>A client-side method; servers do not implement it.</td><td class="st">not supported</td></tr><tr class="no"><td><code>roots/list</code></td><td>A client-side method; servers do not implement it.</td><td class="st">not supported</td></tr></tbody>
+</table></div>
+</section>
+
+<section class="block">
+<h2>Tools</h2>
+<p class="note">Two hand-written summary tools, plus one generated per documented engine API operation. Names read <code>&lt;resource&gt;_&lt;action&gt;</code> — <code>project_suspend</code>, <code>mysql_database_list</code> — with the arguments passed in, not spelled out in the name. A <b>project</b> is one hosting account; the API used to call it a user, and still answers on <code>/users</code>. <code>mysql_user_*</code> and <code>app_user_*</code> are different things: MySQL accounts, and accounts inside the deployed application. Every tool carries the risk annotation its HTTP verb implies — clients use these to decide what to confirm before running. Required parameters are outlined; hover a parameter for its notes.</p>
+
+<div class="controls">
+<input id="q" type="search" placeholder="Filter by name, description or path…" aria-label="Filter tools">
+<div class="filters">
+<button class="f" id="f-all" type="button" aria-pressed="true">All</button>
+<button class="f ro" id="f-ro" type="button" aria-pressed="false">Read-only</button>
+<button class="f de" id="f-de" type="button" aria-pressed="false">Destructive</button>
+</div>
+<span class="count-live" id="live">{{TOTAL}} shown</span>
+</div>
+
+{{TOOLS}}
+<div class="empty hidden" id="empty">No tool matches that filter.</div>
+</section>
+
+<footer>
+Generated from the live server's <code>tools/list</code> response. Tool classes are produced by
+<code>php artisan mcp:tool:generate</code> from the OpenAPI document, so this surface follows the
+engine API's own annotations.
+</footer>
+</div>
+
+<script>
+(function () {
+  var q = document.getElementById('q'),
+      live = document.getElementById('live'),
+      empty = document.getElementById('empty'),
+      tools = Array.prototype.slice.call(document.querySelectorAll('.tool')),
+      groups = Array.prototype.slice.call(document.querySelectorAll('.group')),
+      btns = { all: document.getElementById('f-all'), readonly: document.getElementById('f-ro'), destructive: document.getElementById('f-de') },
+      risk = 'all';
+
+  try { var saved = localStorage.getItem('mcp-risk'); if (saved && btns[saved]) risk = saved; } catch (e) {}
+
+  function apply() {
+    var term = q.value.trim().toLowerCase(), shown = 0;
+    tools.forEach(function (t) {
+      var okRisk = risk === 'all' || t.dataset.risk === risk,
+          okTerm = !term || t.dataset.search.indexOf(term) !== -1,
+          ok = okRisk && okTerm;
+      t.classList.toggle('hidden', !ok);
+      if (ok) shown++;
+    });
+    groups.forEach(function (g) {
+      var any = g.querySelectorAll('.tool:not(.hidden)').length;
+      g.classList.toggle('hidden', any === 0);
+    });
+    live.textContent = shown + (shown === 1 ? ' shown' : ' shown');
+    empty.classList.toggle('hidden', shown !== 0);
+    Object.keys(btns).forEach(function (k) { btns[k].setAttribute('aria-pressed', String(k === risk)); });
+  }
+
+  Object.keys(btns).forEach(function (k) {
+    btns[k].addEventListener('click', function () {
+      risk = k;
+      try { localStorage.setItem('mcp-risk', k); } catch (e) {}
+      apply();
+    });
+  });
+  q.addEventListener('input', apply);
+
+  document.querySelectorAll('.group-head').forEach(function (h) {
+    h.addEventListener('click', function () {
+      h.setAttribute('aria-expanded', h.getAttribute('aria-expanded') === 'true' ? 'false' : 'true');
+    });
+  });
+
+  apply();
+})();
+</script>
+</body>
+</html>

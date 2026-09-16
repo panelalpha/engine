@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=./_schema.json
+id: go
+label: Go
+priority: 760
+runtime: command
+port: 8080
+requires:
+  go: runtime
+detect:
+  file: go.mod
+commands:
+  - id: go-mod-download
+    stage: build
+    role: dependencies
+    run: 'go mod download'
+  - id: go-build
+    stage: build
+    run: 'go build -o app ./...'
+  - id: serve
+    stage: start
+    serve: true
+    run: ./app
+commands_from:
+  go-build: go.build

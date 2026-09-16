@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+#
+# A single-page app whose `start` is only a bundler's dev server (`webpack
+# serve`, `vue-cli-service serve`, ...). Node would run that dev server and
+# lose it to a production install; what ships is the `build` output on nginx.
+# Just above node; the probe steps aside for any real server dependency.
+id: bundler-spa
+strategy: node
+label: 'Static SPA (bundler build)'
+priority: 695
+runtime: nginx
+port: 8080
+output_directory: dist
+output_from: webpack
+requires:
+  node:
+    role: build
+detect:
+  all:
+    - file: package.json
+    - script: build
+    - probe: bundler-spa
+commands:
+  - id: npm-install
+    stage: build
+    role: dependencies
+    run: '{{js.install}}'
+    description: "Resolved from the project's lockfile — npm ci, pnpm install --frozen-lockfile, yarn or bun."
+  - id: spa-build
+    stage: build
+    run: '{{js.build:npm run build}}'
+    description: "The project's own build script; its output directory is read from webpack.config when it says."

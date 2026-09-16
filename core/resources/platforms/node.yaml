@@ -1,0 +1,64 @@
+# yaml-language-server: $schema=./_schema.json
+#
+# Node without a framework: a package.json, a start script or an entry file,
+# and nothing that says which framework it is.
+#
+# This is the platform that was missing, and its absence was the whole of
+# Railpack's live surface. Every other runtime the engine recognises -- php,
+# python, ruby, go, rust, java, dotnet -- has a platform here that claims a
+# plain project of its kind, so it resolves a runtime, gets that runtime's
+# image, and never reaches the fallback. Node did not, so an Express-less,
+# Next-less package.json fell through to Railpack and was built by mise inside
+# a builder image instead of running on the Node image the engine already
+# holds. Railpack is meant to be the last chance for a language we have no
+# recipe for; it was standing in for a recipe we simply had not written.
+#
+# Priority sits below every other language platform on purpose. package.json
+# is the weakest signal there is: Rails apps carry one for the asset pipeline,
+# Django apps for a JS frontend, Laravel for Vite. Whoever declares a stronger
+# runtime is that runtime, and Node is its build tool -- which is what those
+# manifests already say with `node: {role: build}`. It also sits below
+# not-a-web-app, so a VS Code extension is still recognised as one rather than
+# started as a server. php-plain's own comment already assumed this ordering.
+id: node
+label: Node
+priority: 690
+runtime: node
+port: 3000
+requires:
+  node: runtime
+detect:
+  all:
+    - file: package.json
+    # Evidence it is something you can start. A package.json with neither is a
+    # library or a monorepo root, and guessing an entry point for it produces a
+    # container that builds and then exits -- which reads as a broken deploy
+    # rather than as a project that was never a server.
+    - any:
+        - script: start
+        - path: index.js
+        - path: index.mjs
+        - path: server.js
+        - path: app.js
+        - path: src/index.js
+commands:
+  - id: npm-install
+    stage: build
+    role: dependencies
+    run: '{{js.install}}'
+    description: "Resolved from the project's lockfile — npm ci, pnpm install --frozen-lockfile, yarn or bun."
+  - id: npm-build
+    stage: build
+    when:
+      script: build
+    run: 'npm run build'
+    optional: true
+    description: 'Only when package.json defines a build script; a plain server has nothing to build.'
+  - id: serve
+    stage: start
+    serve: true
+    # The project's own start script wins. The fallback probes the same
+    # entries `detect` accepted, in the same order, because whichever one got
+    # this project claimed is the one to run.
+    run: '{{js.start:node "$(ls index.js index.mjs server.js app.js src/index.js 2>/dev/null | head -n1)"}}'
+    description: "The project's own start script when package.json defines one; otherwise its entry file."

@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../_schema.json
+#
+# A fatal that reached the visitor rather than the log.
+#
+# With display_errors on -- which many of these applications ship with, and
+# every one of them can be configured into -- PHP prints the fatal into the
+# response body and the status stays 200. So the port probe passes it, the
+# reachability comparison passes it, and the page says "Fatal error" to
+# everybody who visits.
+#
+# Matched on PHP's own markup rather than the words: `<b>Fatal error</b>:` is
+# what the interpreter emits, and a page that merely discusses fatal errors
+# does not contain it.
+id: no-fatal-error
+severity: error
+serving: php_error
+expect:
+  body_not:
+    - '<b>Fatal error</b>:'
+    - '<b>Parse error</b>:'
+    - 'PHP Fatal error:'
+message: 'The application answered with a PHP fatal error.'
+fix: 'The message in the page names the file and line. A fatal on every request usually means a missing extension or an incomplete install.'

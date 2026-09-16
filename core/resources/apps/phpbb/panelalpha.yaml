@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: phpbb
+strategy: php
+label: phpBB
+priority: 932
+runtime: php
+port: 8000
+docroot: .
+# phpBB's repository is not its application. The deployable tree is phpBB/ --
+# index.php, composer.json, the .htaccess files that protect config.php -- and
+# the top level holds only build tooling. Without app_root the only manifest
+# anything sees is the root package.json, Railpack claims the repository as a
+# Node project, and the image it builds restarts forever.
+app_root: phpBB
+env:
+  APP_ENV: production
+  LOG_CHANNEL: stderr
+requires:
+  php: runtime
+# MySQL or PostgreSQL; the installer needs a server to talk to and phpBB ships
+# none. SQLite is offered but not on a hosting account worth supporting.
+database: mysql
+# Matched against the repository root, because detection runs before app_root
+# is known.
+detect:
+  all:
+    - path: phpBB/composer.json
+    - path: phpBB/includes/constants.php
+    - path: phpBB/viewforum.php
+commands:
+  - id: writable-dirs
+    stage: [install, upgrade]
+    description: 'phpBB writes into these at runtime and its installer refuses to continue while they are read-only: cache/ and store/ every request, files/ and images/avatars/upload/ on upload, config.php once at the end of the install.'
+    run: 'mkdir -p /app/cache /app/store /app/files /app/images/avatars/upload && chmod -R 775 /app/cache /app/store /app/files /app/images/avatars/upload && touch /app/config.php && chmod 664 /app/config.php'

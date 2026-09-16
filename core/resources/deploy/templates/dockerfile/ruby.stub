@@ -1,0 +1,26 @@
+FROM {{ ruby_image }} AS base
+{{^ prebuilt }}
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends {{ system_packages }} \
+ && rm -rf /var/lib/apt/lists/*
+{{/ prebuilt }}
+{{# bundle_deployment }}
+ENV BUNDLE_DEPLOYMENT=1
+{{/ bundle_deployment }}
+ENV BUNDLE_PATH=/usr/local/bundle
+ENV BUNDLE_WITHOUT="development:test"
+{{ environment }}
+WORKDIR /app
+COPY Gemfile ./
+COPY Gemfile.lock* ./
+RUN bundle install --jobs 4 --retry 3 \
+ && rm -rf ~/.bundle /usr/local/bundle/ruby/*/cache
+
+{{ frontend_stage }}
+FROM base AS app
+COPY . .
+{{# frontend_stage }}
+COPY --from=assets /app/public ./public
+{{/ frontend_stage }}
+EXPOSE {{ port }}
+CMD {{ start_command }}

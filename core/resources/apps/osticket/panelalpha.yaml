@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: osticket
+strategy: php
+label: osTicket
+priority: 941
+runtime: php
+port: 8000
+docroot: .
+# osTicket ships no composer.json: its dependencies are vendored under
+# include/, and it needs no Composer to run. Naming the image is what says so
+# -- with one, an unresolvable `requires` falls back to the engine's default
+# minor instead of failing detection. osTicket's own setup refuses anything
+# below PHP 8.2 (include/class.setup.php: $prereq['php']), and the default is
+# above that.
+image: php:8.3-apache-bookworm
+env:
+  APP_ENV: production
+  LOG_CHANNEL: stderr
+requires:
+  php: runtime
+# MySQL, and only MySQL: osTicket's own requirement check is
+# `extension_loaded('mysqli')` and nothing else. The key both provisions the
+# database and puts that extension in the image.
+database: mysql
+detect:
+  all:
+    - path: bootstrap.php
+    - path: include/class.osticket.php
+    - path: include/ost-sampleconfig.php
+    - path: setup/install.php
+commands:
+  - id: writable-config
+    stage: [install, upgrade]
+    description: 'The installer writes include/ost-config.php and refuses to start while it is missing or read-only -- Installer::isConfigWritable() is `is_writable()` on that exact path, and the repository ships only ost-sampleconfig.php. Copied rather than generated because osTicket fills it in itself, and never over a config that already exists.'
+    run: 'if [ ! -f /app/include/ost-config.php ]; then cp /app/include/ost-sampleconfig.php /app/include/ost-config.php; fi && chmod 664 /app/include/ost-config.php && mkdir -p /app/attachments'

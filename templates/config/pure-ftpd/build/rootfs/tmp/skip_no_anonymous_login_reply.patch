@@ -1,0 +1,13 @@
+diff --git a/src/ftpd.c b/src/ftpd.c
+index 53f4de4..c969afe 100644
+--- a/src/ftpd.c
++++ b/src/ftpd.c
+@@ -5062,7 +5062,7 @@ static void doit(void)
+     if (anon_only > 0) {
+         addreply_noformat(220, MSG_ANONYMOUS_FTP_ONLY);
+     } else if (anon_only < 0) {
+-        addreply_noformat(220, MSG_NO_ANONYMOUS_LOGIN);
++        // addreply_noformat(220, MSG_NO_ANONYMOUS_LOGIN);
+     }
+     if (allowfxp == 2) {
+         addreply_noformat(220, MSG_FXP_SUPPORT);

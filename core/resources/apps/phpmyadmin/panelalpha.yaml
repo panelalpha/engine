@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: phpmyadmin
+strategy: php
+label: phpMyAdmin
+priority: 931
+runtime: php
+port: 8000
+# phpMyAdmin is a client for a MySQL server it does not ship. With no
+# config.inc.php it falls back to localhost, where the container has nothing
+# listening, so the login page renders as a healthy 200 and every login on it
+# fails -- the account's own server has to be written into the config.
+env:
+  APP_ENV: production
+  LOG_CHANNEL: stderr
+requires:
+  php: runtime
+  node:
+    role: build
+    optional: true
+# The account's own MySQL, which is the server the user actually wants to
+# administer. The provisioned database is also where phpMyAdmin's optional
+# configuration storage (the pma__* tables) would go.
+database: mysql
+detect:
+  all:
+    - file: composer.json
+    - file: config.sample.inc.php
+    # phpMyAdmin's own libraries, required by both the 5.x and 6.x trees. The
+    # sample config alone is not enough -- documentation and forks ship one --
+    # and matching on public/index.php would miss 5.x, which serves from the
+    # repository root.
+    - composer: phpmyadmin/sql-parser
+    - composer: phpmyadmin/motranslator
+commands:
+  - id: write-config
+    stage: [install, upgrade]
+    description: 'Points phpMyAdmin at the account''s MySQL server and gives cookie auth the 32-byte secret it encrypts session cookies with; without a config file it looks for a server on localhost, where a PHP container has none. Written on install and upgrade rather than at every start so an administrator''s later edits survive a restart, and never over a file that already exists.'
+    run: 'if [ ! -f /app/config.inc.php ]; then printf ''<?php\ndeclare(strict_types=1);\n$cfg["blowfish_secret"] = "%s";\n$i = 1;\n$cfg["Servers"][$i]["auth_type"] = "cookie";\n$cfg["Servers"][$i]["host"] = "%s";\n$cfg["Servers"][$i]["port"] = "%s";\n$cfg["Servers"][$i]["compress"] = false;\n$cfg["Servers"][$i]["AllowNoPassword"] = false;\n'' "$(php -r ''echo bin2hex(random_bytes(16));'')" "${DB_HOST:-127.0.0.1}" "${DB_PORT:-3306}" > /app/config.inc.php && chmod 640 /app/config.inc.php; fi'

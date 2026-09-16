@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Join our Discord
+    url: https://discord.gg/9twHWR7xGX
+    about: Have a question, need a hand, or just want to chat? Come join us on Discord.
+  - name: Drop by the Forums
+    url: https://community.panelalpha.com/
+    about: Ask questions, share ideas, and show the community what you've been deploying.
+  - name: Report a security vulnerability
+    url: https://github.com/panelalpha/engine/security/policy
+    about: Found a security issue? Please report it privately rather than opening a public issue. See SECURITY.md.

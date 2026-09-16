@@ -1,0 +1,63 @@
+# The "host" the engine is installed into, for CI and local development.
+#
+# On a real deployment the engine owns a machine: it drives that machine's
+# Docker daemon, writes its sysctls, installs CSF, and starts one sysbox
+# container per hosting account. This image is that machine, packaged — a
+# systemd container that runs its own Docker daemon and is started with
+# `--runtime=sysbox-runc`, so everything above it happens inside.
+#
+# systemd is deliberate. The engine's core container runs with `pid: host` and
+# reaches the host through `nsenter --target 1 --all`; with systemd as pid 1
+# that call lands somewhere real. A plain command as pid 1 would give it a
+# process that owns none of the host state it expects.
+#
+# The one thing that cannot happen inside: installing Sysbox. Its sysbox-fs and
+# sysbox-mgr are host daemons, and sysbox-in-sysbox is unsupported upstream, so
+# account containers here run privileged instead — confined by *this*
+# container's user namespace, and so still powerless on the real host. See
+# docs/engine-container.md.
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV NEEDRESTART_MODE=a
+
+# systemd, then the tools installer.sh/bootstrap-from-source.sh expect to find
+# on a freshly provisioned host.
+RUN apt-get update -qq \
+ && apt-get install -y -qq --no-install-recommends \
+      systemd systemd-sysv dbus dbus-user-session \
+      ca-certificates curl gnupg jq unzip lsb-release apt-transport-https \
+      ipcalc quota at openssl openssh-client rsync iproute2 iputils-ping \
+      kmod procps sudo xz-utils git \
+ && rm -rf /var/lib/apt/lists/*
+
+# Docker, from the same repository and with the same packages the installer
+# would add, so what runs here is what runs on a real host.
+RUN install -m 0755 -d /etc/apt/keyrings \
+ && curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+      | gpg --dearmor -o /etc/apt/keyrings/docker.gpg --yes \
+ && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu noble stable" \
+      > /etc/apt/sources.list.d/docker.list \
+ && apt-get update -qq \
+ && apt-get install -y -qq --no-install-recommends \
+      docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin \
+ && rm -rf /var/lib/apt/lists/* \
+ && systemctl enable docker
+
+# Nested daemons cannot discover their path MTU when ICMP is filtered, which is
+# the common case; the handshake to a registry then times out and reads as an
+# outage rather than as an MTU problem. 1400 leaves room for the encapsulation
+# between here and the real host.
+RUN mkdir -p /etc/docker \
+ && printf '{"mtu": 1400}\n' > /etc/docker/daemon.json
+
+# Units that have nothing to manage in a container and only add failures.
+RUN systemctl mask systemd-resolved systemd-networkd-wait-online \
+      systemd-udevd systemd-modules-load 2>/dev/null || true
+
+# The engine is installed here, whether bind-mounted from a working tree or
+# unpacked by installer.sh.
+RUN mkdir -p /opt/panelalpha/shared-hosting
+
+STOPSIGNAL SIGRTMIN+3
+CMD ["/sbin/init"]

@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=./_schema.json
+#
+# PHP without Composer: a hand-written site, the shape shared hosting has
+# always served. It shares the `php` strategy with php.yaml -- same runtime,
+# same image, same document root -- and differs only in having no dependency
+# manifest to install from, which is why it carries no commands.
+#
+# Priority sits below every framework and language platform: a project that
+# declares itself Node, Python or Composer-PHP is that, even when a .php file
+# is lying around. It sits above `static` so that a site with an index.php
+# runs PHP rather than being served as documents -- including the case where
+# the only other candidate is the placeholder page the engine wrote itself.
+id: php-plain
+strategy: php
+label: PHP (no Composer)
+priority: 200
+runtime: php
+port: 8000
+requires:
+  php: runtime
+detect:
+  probe: php-sources
+  none:
+    - file: composer.json
+commands: {  }

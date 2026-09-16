@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: chamilo
+strategy: php
+label: Chamilo
+priority: 942
+runtime: php
+port: 8000
+# Chamilo's own installer is what should greet the first visitor, and it opens
+# on a form asking for database credentials. Chamilo ships no database and no
+# environment variable to read one from, so without this key the wizard has
+# nothing to connect to.
+env:
+  APP_ENV: production
+  LOG_CHANNEL: stderr
+requires:
+  php: runtime
+database: mysql
+detect:
+  all:
+    - file: composer.json
+    # The package name, which is the one thing the 1.11 and 2.x trees share --
+    # they agree on almost nothing else, including where the application root
+    # is.
+    - contains:
+        path: composer.json
+        pattern: 'chamilo/chamilo-lms'
+    - any:
+        # 1.11.x serves from the repository root ...
+        - path: main/install/index.php
+        # ... 2.x from public/.
+        - path: public/main/install/index.php
+commands:
+  - id: writable-dirs
+    stage: [install, upgrade]
+    description: 'What each line of Chamilo writes into: 1.11 keeps courses, uploads and its generated configuration.php under app/, 2.x keeps Symfony''s cache and logs under var/. Both sets are created because one manifest covers both trees, and creating a directory the tree does not use costs nothing.'
+    run: 'mkdir -p /app/app/cache /app/app/courses /app/app/upload /app/app/logs /app/app/config /app/var/cache /app/var/log && chmod -R 775 /app/app /app/var 2>/dev/null; true'

@@ -1,0 +1,421 @@
+# PanelAlpha Engine - image catalogue
+#
+# Every image the engine runs a project on or holds ahead of one, and the whole
+# of what an operator edits to change either.
+#
+# It answers two questions that are really one subject asked at different
+# times:
+#
+#   which image does this runtime at this version resolve to?
+#     A recipe (resources/platforms/, resources/apps/) says what runtime a
+#     project needs -- `requires: {php: runtime}` -- and a Runtime class reads
+#     the project for a version. This file turns `php` at `8.3` into an image.
+#
+#   which of those does this host hold before any deploy asks?
+#     `prewarm` on a version, read by `system:image:prewarm`.
+#
+# It was three files. dind-image-cache.yaml and prewarm.yaml described
+# overlapping halves of the second question and were merged; runtime-images.yaml
+# answered the first, and 26 of the 32 entries left in the merged file existed
+# only to name a version it had already declared. A version bumped in one and
+# forgotten in the other is a host warming an image nothing runs, or a project
+# resolving to one the host never held.
+#
+# Format:
+#   runtimes:
+#     <runtime id>:                 # Runtime::id(), e.g. php, node, go
+#       default: "8.3"              # what a project naming no version gets
+#       image:
+#         from: "php:{version}-apache-bookworm"   # {version} is substituted
+#         build_from: "rust:1-bookworm"           # only when a *host compile*
+#                                   # needs an image the runtime is not. A host
+#                                   # compile runs as the account and cannot
+#                                   # apt-get, so a slim runtime with no
+#                                   # compiler fails every crate that probes for
+#                                   # one. Omit it and the compile uses `from`.
+#         build:                    # omit for a runtime we only pull
+#           repository: panelalpha/php
+#           stub: dockerfile/php-base             # resources/deploy/templates/
+#           recipe: "2026-09-09"    # stamped into the tag; bump on a change
+#           runnable: true          # the derivative *is* the runtime, so a
+#                                   # deploy waits for it rather than falling
+#                                   # back to `from`
+#       versions:                   # oldest first -- resolution walks them in
+#         - version: "8.3"          # this order and takes the first that fits
+#           prewarm: 870            # host warm priority, higher first;
+#                                   # omit and this version is never warmed
+#           why: "..."              # shown in the prewarm plan
+#
+#   extras:                         # images no runtime describes
+#     - image: "composer:2"
+#       runtime: php                # only so `--runtimes=php` selects it
+#       prewarm: 810
+#       why: "..."
+#
+#   host:
+#     reserve: 10G                  # never spend the host below this
+#     budget: 6G                    # or `none` for "up to the reserve"
+#
+# `versions` is not a whitelist for resolution. A project asking for something
+# outside it is still honoured -- GoRuntime deliberately serves a go.mod newer
+# than anything listed, because a toolchain older than the project fails the
+# build outright. It is the set worth resolving to and worth having on the host.
+# It *is* a whitelist for warming: `prewarm` on a version this file does not
+# declare warms a tag nobody published.
+#
+# ORDER IS THE ONLY PREWARM TUNING. No size, saving or hit rate: sizes are
+# measured from the registry manifest before a pull and from real free space
+# after. Gaps in `prewarm` leave room to slot an image in without renumbering.
+#
+# NOTHING HERE DECIDES WHAT AN ACCOUNT LOADS. A deploy names what it needs and
+# the host hands it over; a Railpack build reads the images out of the plan
+# railpack wrote.
+#
+# Anything wrong, missing or unparseable falls back to the values compiled into
+# the runtime classes, so a bad edit costs the operator their customisation and
+# never a deploy: a project still resolves to a version and still runs on the
+# official image for it. What a bad edit does cost is the `build` half -- the
+# images the engine builds are named from this file and nowhere else, so a
+# runtime whose `build` block is malformed has no shared base image at all and
+# every account on it installs its own extensions, slowly.
+#
+# Two things about editing `build`:
+#
+#   Changing `stub` does NOT change the tag by itself. The tag carries the
+#   `recipe` date declared beside it, so pointing the build at a different
+#   Dockerfile and leaving the date alone serves the image built from the old
+#   one. Bump `recipe` in the same edit.
+#
+#   Changing `repository` retires what you have already built. New builds go to
+#   the new name, nothing asks for the old one again, and images under it stop
+#   counting as host infrastructure -- so account cleanup reclaims them.
+
+runtimes:
+  php:
+    # The lowest minor satisfying every composer constraint wins, so this list
+    # is walked oldest-first and its order is load-bearing.
+    default: "8.3"
+    image:
+      # apache, not cli: the deployed app is served by Apache, whose .htaccess
+      # support is where a PHP application keeps its directory protection.
+      # PHP's built-in server handles one request at a time and has never heard
+      # of it.
+      from: "php:{version}-apache-bookworm"
+      build:
+        # An official php tag with the extensions almost every PHP app asks for
+        # already compiled in, plus Apache, composer and the entrypoint shim.
+        # Built once on the host and seeded into each account: on a freshly
+        # released minor install-php-extensions has no prebuilt binaries and
+        # compiles from source, ~3 minutes per account otherwise.
+        repository: panelalpha/php
+        stub: dockerfile/php-base
+        # Stamped into the tag: panelalpha/php:8.3-apache-bookworm-pa20260909.
+        # Bump it whenever you change what this image contains -- the stub, the
+        # baked extension list, the Apache config, the entrypoint shim. Nothing
+        # detects that for you.
+        recipe: "2026-09-10"
+        # There is no per-project Dockerfile behind this any more -- the base
+        # image *is* the runtime -- so a deploy that cannot get it has nothing
+        # to run and waits for the build rather than proceeding.
+        runnable: true
+    # Every base costs and saves the same, so the priorities decide who wins a
+    # tight budget: newest first, because a partial warm is worth more on the
+    # minors new projects pin. A minor nobody deploys is ~800MB of host disk
+    # for nothing -- drop its `prewarm` and it stays resolvable but unwarmed.
+    versions:
+      - version: "8.1"
+        prewarm: 850
+        why: "shared PHP base; compiles the baked extension set from source"
+      - version: "8.2"
+        prewarm: 860
+        why: "shared PHP base; compiles the baked extension set from source"
+      - version: "8.3"
+        prewarm: 870
+        why: "shared PHP base; compiles the baked extension set from source"
+      - version: "8.4"
+        prewarm: 880
+        why: "shared PHP base; compiles the baked extension set from source"
+      - version: "8.5"
+        prewarm: 890
+        why: "shared PHP base; compiles the baked extension set from source"
+
+      # Extension variants: the shared base plus one extra layer, for the apps
+      # that ask for an extension the baked set does not carry. A variant's tag
+      # hashes its extension set, so nothing can derive it from a tag alone --
+      # it has to be declared, and declaring it here is what lets the host build
+      # it ahead of any deploy.
+      #
+      # Without these the variant was built by whichever deploy first needed
+      # it, and that deploy *failed*: providePhp() queued the build and ran on
+      # the plain base, which cannot satisfy a required extension. anonaddy
+      # (ext-mailparse), dreamfactory (ext-mongodb) and selfoss (ext-tidy) each
+      # lost their first deploy on a host that way. Every entry needs its own
+      # number (a tie means someone edited one line and missed another), and
+      # they all sit below the plain bases: a minor nobody deploys is worth
+      # more than an extension one app wants.
+      - version: "8.1"
+        extensions: ["mcrypt"]
+        prewarm: 801
+        why: "qloapps: a locked package requires ext-mcrypt, which PHP 8 dropped"
+      - version: "8.3"
+        extensions: ["imap"]
+        prewarm: 802
+        why: "mautic: requires ext-imap"
+      - version: "8.3"
+        extensions: ["mailparse"]
+        prewarm: 803
+        why: "anonaddy: php-mime-mail-parser requires ext-mailparse"
+      - version: "8.3"
+        extensions: ["mongodb"]
+        prewarm: 804
+        why: "dreamfactory: requires ext-mongodb"
+      - version: "8.3"
+        extensions: ["tidy"]
+        prewarm: 805
+        why: "selfoss: ext-tidy is required by a locked package"
+      - version: "8.3"
+        extensions: ["zmq"]
+        prewarm: 806
+        why: "espocrm: react/zmq requires ext-zmq (the app itself treats it as optional)"
+      - version: "8.4"
+        extensions: ["geos"]
+        prewarm: 807
+        why: "farmos: requires ext-geos"
+      - version: "8.4"
+        extensions: ["swoole"]
+        prewarm: 808
+        why: "egroupware: its swoolepush module asks for ext-swoole"
+
+  ruby:
+    default: "3.3"
+    image:
+      from: "ruby:{version}-slim-bookworm"
+      build:
+        # ruby:*-slim carries no build toolchain, so a native gem compiles from
+        # source in every account that installs one. The apt packages it needs
+        # go in once, on the host.
+        repository: panelalpha/ruby
+        stub: dockerfile/ruby-base
+        # Unlike PHP, this one is an optimisation over `from`: a Ruby account
+        # can run the stock slim image and install its own packages, slowly. A
+        # deploy that cannot get this does not wait for it.
+        runnable: false
+    # Read differently from PHP's. PHP picks a minor out of this list by testing
+    # composer constraints against each. Ruby does not choose at all: it takes
+    # whatever .ruby-version or the project's own Dockerfile states, because a
+    # Gemfile.lock resolved under one minor refuses to install under another and
+    # native gem extensions are compiled per minor. So for Ruby this list is the
+    # set the host warms, and `default` is what a project stating nothing gets.
+    versions:
+      - version: "3.2"
+        prewarm: 160
+        why: "Ruby minor pinned via .ruby-version"
+      - version: "3.3"
+        prewarm: 770
+        why: "default Ruby minor for the Rails recipe"
+      - version: "3.4"
+        prewarm: 155
+        why: "Ruby minor pinned via .ruby-version"
+
+  python:
+    default: "3.12"
+    image:
+      # slim, not alpine: a wheel built for manylinux does not install against
+      # musl, so alpine turns every dependency with a C extension into a source
+      # build.
+      from: "python:{version}-slim"
+      build:
+        # slim has no compiler and no -dev headers, which is fine until pip
+        # finds no wheel and falls back to building from source -- then it is
+        # not a slow install, it is `pg_config executable not found` and a dead
+        # deploy. The headers go in once, on the host.
+        repository: panelalpha/python
+        stub: dockerfile/python-base
+        # A deploy waits for this rather than starting without it. It reads
+        # oddly next to Ruby, which does not -- the difference is where the
+        # packages come from. Ruby's per-project Dockerfile installs them
+        # itself, so the stock image is a complete answer. Python has no
+        # per-project Dockerfile: this image is the only place the headers
+        # exist. Measured: with this false, the first deploy of a Django
+        # project with psycopg2 failed on `pg_config executable not found`
+        # while the base built in the background, and only the retry succeeded.
+        runnable: true
+    # Walked oldest-first: the lowest listed minor satisfying `requires-python`
+    # wins. A project asking for something newer is still honoured and pulled
+    # on demand.
+    versions:
+      - version: "3.10"
+        prewarm: 175
+        why: "Python minor pinned via requires-python"
+      - version: "3.11"
+        prewarm: 180
+        why: "Python minor pinned via requires-python"
+      - version: "3.12"
+        prewarm: 780
+        why: "default Python minor"
+      - version: "3.13"
+        prewarm: 190
+        why: "Python minor pinned via requires-python"
+      - version: "3.14"
+        prewarm: 185
+        why: "Python minor pinned via requires-python"
+
+  go:
+    default: "1.22"
+    image:
+      # alpine is safe here in a way it is not for Python: a Go binary is static
+      # by default, so there is no wheel ecosystem to disagree with.
+      from: "golang:{version}-alpine"
+    versions:
+      - version: "1.21"
+        prewarm: 150
+        why: "Go minor pinned via go.mod"
+      - version: "1.22"
+        prewarm: 760
+        why: "default Go minor"
+      - version: "1.23"
+        prewarm: 145
+        why: "Go minor pinned via go.mod"
+      - version: "1.24"
+        prewarm: 140
+        why: "Go minor pinned via go.mod"
+      - version: "1.25"
+        prewarm: 135
+        why: "Go minor pinned via go.mod"
+      - version: "1.26"
+        prewarm: 130
+        why: "Go minor pinned via go.mod"
+
+  node:
+    # Deliberately an older LTS rather than the newest release. A project
+    # needing recent Node says so in engines.node, .nvmrc or .node-version and
+    # is honoured; one that says nothing is usually one nobody has touched in a
+    # while, and newer Node is where its dependencies break -- native bindings,
+    # old webpack, packages reaching into V8 internals.
+    default: "20"
+    image:
+      from: "node:{version}-bookworm-slim"
+      # No build block, but note what the recipe's answer does *not* survive: a
+      # project whose lockfile is bun.lock is compiled and run in the Bun image
+      # instead (HostNodeBuild::runtimeImage), because a tree installed by bun
+      # and imported by node fails on packages only bun can resolve. That is a
+      # swap of toolchain, not of version.
+    versions:
+      - version: "18"
+        prewarm: 170
+        why: "Node major pinned via engines.node or .nvmrc"
+      - version: "20"
+        prewarm: 840
+        why: "default Node major for JS frameworks and PHP/Vite asset stages"
+      - version: "22"
+        prewarm: 790
+        why: "Node major for projects that ask for a newer one"
+      - version: "24"
+        prewarm: 165
+        why: "Node major pinned via engines.node or .nvmrc"
+
+  rust:
+    # One entry, and that is the honest number. Cargo.toml's `rust-version` is a
+    # minimum supported version rather than a request for that toolchain, and
+    # the official image publishes no per-minor slim tags worth chasing.
+    default: "1"
+    image:
+      # No {version}: the tag is fixed, and a template that pretended otherwise
+      # would suggest an operator could pick a minor here. They cannot.
+      from: "rust:1-slim-bookworm"
+      # ...but the slim tag is only right for *running* the binary. A host
+      # compile runs as the account and cannot apt-get anything, and measured
+      # on this host slim has no g++, no pkg-config, no openssl headers and no
+      # libssl -- so every crate whose build script probes for one of them
+      # fails the deploy. The full tag is 2.2GB against 1.23GB and is loaded
+      # once on the host for every deploy to share.
+      build_from: "rust:1-bookworm"
+    # Listed but not warmed: a project reaching this is rare enough that the
+    # host pull it costs beats the disk to hold it. Being listed is still what
+    # tells account cleanup it is host infrastructure.
+    versions:
+      - version: "1"
+        why: "the one Rust image the engine runs"
+
+  java:
+    # Java's "version" is a JDK release *and* a build tool, because that is what
+    # has to be decided: a Gradle project built in the Maven image has no gradle
+    # on PATH. Both entries are JDK 21; they differ in the builder.
+    default: "21-maven"
+    image:
+      # maven and gradle publish under different names, so there is no one
+      # template here and each version names its own image. `from` is the
+      # default for anything not overridden.
+      from: "maven:3-eclipse-temurin-21"
+      overrides:
+        "21-gradle":
+          from: "gradle:8-jdk21"
+    versions:
+      - version: "21-maven"
+        why: "Java builds under Maven"
+      - version: "21-gradle"
+        why: "Java builds under Gradle"
+
+  dotnet:
+    # The target framework a project declares, not an SDK release: a .csproj
+    # says net8.0 and the SDK has to be able to target it. Newer SDKs build
+    # older targets, so the list is walked oldest-first and the lowest that
+    # satisfies wins -- but a global.json pinning an SDK is meant literally and
+    # is honoured over the target.
+    default: "8.0"
+    image:
+      # The SDK image, which both builds and runs. The runtime-only image is far
+      # smaller, but publish output is IL plus a runtimeconfig and the SDK
+      # executes it perfectly well -- a second image per version would buy size
+      # and nothing else here.
+      from: "mcr.microsoft.com/dotnet/sdk:{version}"
+    versions:
+      - version: "8.0"
+        why: ".NET target framework"
+      - version: "9.0"
+        why: ".NET target framework"
+
+# Images no runtime describes: the engine reaches for these directly.
+extras:
+  # Served by static and fallback recipes and by the welcome page a fresh
+  # account shows. Cheap, and the widest reach of anything here.
+  - image: "nginx:alpine"
+    runtime: static
+    prewarm: 900
+    why: "welcome page and final stage of static deploys"
+
+  # Railpack's own build infrastructure. Only reached when every recipe has
+  # declined -- now that every runtime has one, that is a library with no entry
+  # point or a language we have no recipe for. These tags follow Railpack's own
+  # release calendar; an account is given whatever its plan names, so a stale
+  # one here costs a host pull rather than the wrong image.
+  - image: "ghcr.io/railwayapp/railpack-runtime:mise-2026.8.16"
+    runtime: railpack
+    prewarm: 830
+    why: "Railpack runtime base (mise runtime shims)"
+  - image: "ghcr.io/railwayapp/railpack-frontend:latest"
+    runtime: railpack
+    prewarm: 820
+    why: "Railpack buildkit frontend"
+  - image: "ghcr.io/railwayapp/railpack-builder:mise-2026.8.16"
+    runtime: railpack
+    prewarm: 800
+    why: "Railpack builder base (mise + build deps)"
+
+  - image: "composer:2"
+    runtime: php
+    prewarm: 810
+    why: "COPY --from stage of every PHP image build"
+
+  - image: "oven/bun:1"
+    runtime: node
+    prewarm: 750
+    why: "host build path for bun.lock projects"
+
+host:
+  # Accounts live on the same filesystem, so warming never takes the host below
+  # this much free space, whatever the budget says.
+  reserve: 10G
+
+  # What one prewarm run may spend in total. `none` means "up to the reserve".
+  budget: 6G

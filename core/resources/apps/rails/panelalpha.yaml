@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: rails
+label: Rails
+priority: 960
+runtime: command
+port: 3000
+env:
+  RAILS_ENV: production
+  RAILS_LOG_TO_STDOUT: '1'
+  RAILS_SERVE_STATIC_FILES: '1'
+requires:
+  ruby: runtime
+  # Rails apps with a JS bundler need Node to build assets and never at
+  # runtime; one without package.json resolves to nothing.
+  node:
+    role: build
+    optional: true
+detect:
+  all:
+    - file: gemfile
+    - path: config/application.rb
+commands:
+  - id: bundle-install
+    stage: build
+    role: dependencies
+    run: 'bundle install --jobs 4 --retry 3'
+  - id: assets-precompile
+    stage: build
+    description: 'SECRET_KEY_BASE_DUMMY lets the asset pipeline boot the app without the real key, which is not available at build time.'
+    when:
+      path: config/application.rb
+    run: 'SECRET_KEY_BASE_DUMMY=1 bundle exec rails assets:precompile'
+    optional: true
+  - id: db-prepare
+    stage: install
+    description: 'Creates and loads the schema on a database that does not have one yet.'
+    run: 'bundle exec rails db:prepare'
+    timeout: 600
+  - id: migrate
+    stage: upgrade
+    description: 'db:migrate rather than db:prepare — the database exists by now, and prepare would try to load the schema over live data.'
+    run: 'bundle exec rails db:migrate'
+    timeout: 600
+  - id: serve
+    stage: start
+    serve: true
+    run: 'bundle exec rails server -b 0.0.0.0 -p 3000'

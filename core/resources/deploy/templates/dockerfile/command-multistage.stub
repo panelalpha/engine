@@ -1,0 +1,17 @@
+FROM {{ image }} AS build
+WORKDIR /app
+COPY . .
+{{ env }}
+{{# install_command }}
+RUN {{ install_command }}
+{{/ install_command }}
+{{# build_command }}
+RUN {{ build_command }}
+{{/ build_command }}
+
+FROM {{ runtime_image }}
+WORKDIR /app
+{{ env }}
+COPY --from=build /app/{{ output_directory }} ./{{ output_directory }}
+EXPOSE {{ port }}
+{{ entrypoint }}

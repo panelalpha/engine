@@ -1,0 +1,27 @@
+services:
+  sites-http:
+    profiles: ["hosting", "full"]
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-openlitespeed
+    image: ghcr.io/panelalpha/engine-openlitespeed:20260527
+    pull_policy: missing
+    labels:
+      - com.panelalpha.webserver=openlitespeed
+    depends_on:
+      - core
+    restart: always
+    hostname: webserver.shared-hosting.palocal
+    network_mode: host
+    dns:
+      - 127.0.0.54
+    volumes:
+      - /home:/home
+      - ./webserver-config/openlitespeed:/usr/local/lsws/conf
+      - ./webserver-config/openlitespeed-admin:/usr/local/lsws/admin/conf
+      - ./config/modsecurity:/opt/modsecurity
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/lib/letsencrypt:/var/lib/letsencrypt
+      - /opt/panelalpha:/opt/panelalpha
+    mem_limit: ${MEM_LIMIT_SITES_HTTP_OPENLITESPEED:-${MEM_LIMIT_WEBSERVER_OPENLITESPEED:-3G}}
+    memswap_limit: ${MEMSWAP_LIMIT_SITES_HTTP_OPENLITESPEED:-${MEMSWAP_LIMIT_WEBSERVER_OPENLITESPEED:-0}}
