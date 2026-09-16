@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: sveltekit
+label: SvelteKit
+priority: 910
+runtime: node
+port: 3000
+output_directory: build
+requires:
+  node: runtime
+detect:
+  all:
+    - dep: '@sveltejs/kit'
+    - any:
+        -
+          glob: svelte.config
+        -
+          dep: svelte
+commands:
+  - id: npm-install
+    stage: build
+    role: dependencies
+    run: '{{js.install}}'
+    description: "Resolved from the project's lockfile — npm ci, pnpm install --frozen-lockfile, yarn or bun."
+  - id: vite-build
+    stage: build
+    run: '{{js.build:npx vite build}}'
+    description: "The project's own build script wins over this default when package.json defines one."
+  - id: serve
+    stage: start
+    serve: true
+    run: '{{js.start:node build/index.js}}'
+    description: "The project's own start script wins over this default when package.json defines one."

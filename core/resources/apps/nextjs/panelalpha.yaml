@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: nextjs
+label: Next.js
+priority: 920
+runtime: node
+port: 3000
+output_directory: .next
+requires:
+  node: runtime
+detect:
+  probe: next-workspace
+commands:
+  - id: npm-install
+    stage: build
+    role: dependencies
+    run: '{{js.install}}'
+    description: "Resolved from the project's lockfile — npm ci, pnpm install --frozen-lockfile, yarn or bun."
+  - id: next-build
+    stage: build
+    run: '{{js.build:npx next build}}'
+    description: "The project's own build script wins over this default when package.json defines one."
+  - id: serve
+    stage: start
+    serve: true
+    run: '{{js.start:npx next start -H 0.0.0.0 -p 3000}}'
+    description: "The project's own start script wins over this default when package.json defines one."
+output_from: next-workspace

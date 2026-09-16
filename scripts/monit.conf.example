@@ -1,0 +1,3 @@
+check system \$HOST
+  if memory usage > 91% for 1 cycle then
+    exec "/opt/panelalpha/shared-hosting/scripts/monit-script.sh" repeat every 1 cycle

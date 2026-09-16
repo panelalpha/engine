@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: express
+label: Express
+priority: 888
+runtime: node
+port: 3000
+output_directory: dist
+requires:
+  node: runtime
+detect:
+  dep: express
+commands:
+  - id: npm-install
+    stage: build
+    role: dependencies
+    run: '{{js.install}}'
+    description: "Resolved from the project's lockfile — npm ci, pnpm install --frozen-lockfile, yarn or bun."
+  - id: npm-build
+    stage: build
+    when:
+      script: build
+    run: 'npm run build'
+    optional: true
+  - id: serve
+    stage: start
+    serve: true
+    run: '{{js.start:node index.js}}'
+    description: "The project's own start script wins over this default when package.json defines one."

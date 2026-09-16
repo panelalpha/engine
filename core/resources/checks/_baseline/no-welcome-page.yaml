@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../_schema.json
+#
+# The other placeholder, and deliberately not an error.
+#
+# A new account is *given* this page: the environment is provisioned, nothing
+# has been deployed into it yet, and the welcome page is what stands in until
+# something is. That is a project waiting for an application, not a broken
+# one, and calling it an error would put a red mark against every account on
+# the day it was created.
+#
+# It stops being harmless the moment the account has files of its own, and
+# that is a state the deploy pipeline already removes on its own
+# (dropSupersededPlaceholder). Seeing it here alongside an application is
+# worth a sentence -- which is what a warning is.
+id: no-welcome-page
+severity: warning
+serving: no_application
+expect:
+  body_not:
+    - 'PanelAlpha — Ready'
+message: 'This project is still showing the PanelAlpha welcome page.'
+explain: placeholder-page

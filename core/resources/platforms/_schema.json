@@ -1,0 +1,392 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://panelalpha.com/schemas/platform.json",
+  "title": "PanelAlpha platform manifest",
+  "description": "One deployable stack: how to recognise it, and the staged commands that build, install, upgrade and start it.",
+  "type": "object",
+  "required": [
+    "id",
+    "label",
+    "priority",
+    "detect"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Unique manifest id; also the filename."
+    },
+    "strategy": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Strategy id the rest of the pipeline switches on. Defaults to `id`. Two manifests may share one strategy when a stack has two deployment shapes (astro / astro-ssr)."
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable name shown in deploy logs."
+    },
+    "priority": {
+      "type": "integer",
+      "description": "Detection order, highest first. This is where ordering constraints live: Laravel must outrank PHP, Django must outrank Python, Next must outrank Vite."
+    },
+    "runtime": {
+      "enum": [
+        "node",
+        "nginx",
+        "command",
+        "php",
+        "compose",
+        "dockerfile"
+      ],
+      "default": "command"
+    },
+    "app_root": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The application's own root inside the repository, when they are not the same directory \u2014 phpBB ships its application in phpBB/ and keeps only build tooling at the top level. `detect` rules stay relative to the repository root (they run before this is known); everything after detection \u2014 the runtime version read from the project's manifests, the deployability check, the files copied into the image, and the document root \u2014 is resolved inside it. Must be a relative path that does not escape the repository.",
+      "pattern": "^[^/].*$"
+    },
+    "docroot": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Apache's document root, relative to the application root \u2014 `public` for Laravel and Flarum, `pub` for Magento, `upload` for OpenCart, `.` for an application served from its own root. Only meaningful for `runtime: php`, where the shared base image reads it as PA_DOCROOT. Omit it and the image looks for a `public/` directory and falls back to the application root, which is right for most PHP applications. Must be a relative path that does not escape the application.",
+      "pattern": "^[^/].*$"
+    },
+    "port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "build_args": {
+      "type": "object",
+      "description": "Dockerfile ARG values the repository's own build needs in order to produce a deployable variant of itself \u2014 `BASE: apache` for a Dockerfile whose `FROM ${BASE}-base` picks between an FPM image and an Apache one. Only the `dockerfile` strategy reads it: `--target` stops the build at a stage, so it cannot select a variant the later stages of the file read.",
+      "propertyNames": {
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "type": ["string", "integer"]
+      }
+    },
+    "image": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Literal base image. Omit and use `requires` when the version comes from the project."
+    },
+    "requires": {
+      "type": "object",
+      "description": "Toolchains this platform needs. Names only \u2014 never versions: a manifest describes every project of its kind, and the version is a property of one project. A Runtime class reads the project and answers. `role: build` means the toolchain builds the app and is absent from the runtime image, which is why a Laravel app that compiles assets needs no image containing both PHP and Node.",
+      "propertyNames": {
+        "pattern": "^[a-z0-9][a-z0-9-]*$"
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "enum": [
+              "runtime",
+              "build"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "role": {
+                "enum": [
+                  "runtime",
+                  "build"
+                ],
+                "default": "runtime"
+              },
+              "optional": {
+                "type": "boolean",
+                "default": false,
+                "description": "Absent toolchain is not an error \u2014 a Laravel app with no package.json does not need Node."
+              }
+            }
+          }
+        ]
+      }
+    },
+    "output_directory": {
+      "type": "string",
+      "minLength": 1
+    },
+    "output_from": {
+      "enum": [
+        "angular",
+        "next-workspace",
+        "webpack"
+      ],
+      "description": "Resolver for an output path the project declares itself (angular.json, webpack.config) or that depends on a workspace."
+    },
+    "commands_from": {
+      "type": "object",
+      "description": "Command id => resolver, for commands whose text is derived from the project.",
+      "additionalProperties": {
+        "enum": [
+          "python.install",
+          "python.start",
+          "rust.packages",
+          "rust.build",
+          "rust.start",
+          "go.build",
+          "java.start",
+          "java.start-gradle",
+          "laravel.assets"
+        ]
+      }
+    },
+    "env": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "integer",
+          "boolean"
+        ]
+      },
+      "propertyNames": {
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      }
+    },
+    "database": {
+      "enum": [
+        "mysql"
+      ],
+      "description": "The platform needs a relational database and does not ship one. The engine provisions a database and user on the account's own MySQL server \u2014 visible in the panel, manageable in phpMyAdmin, and surviving a redeploy \u2014 and hands the app its credentials as DB_HOST, DB_PORT, DB_DATABASE, DB_USERNAME and DB_PASSWORD. Omit it for a platform whose project points itself at a database (Laravel reads its .env) or ships one in its own compose file."
+    },
+    "check": {
+      "description": "Health checks this manifest adds to the ones its runtime already brings \u2014 `laravel/app-key-set`, not `php`. A whole group is `<group>`, one check is `<group>/<id>`. Never list your own runtime's group: `runtime: php` already brings `checks/php/`, and repeating it in fifteen manifests is the duplication the groups exist to remove. To skip a check a group brings, put a `when` guard on the check itself.",
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-z0-9_][a-z0-9_-]*(/[a-z0-9][a-z0-9-]*)?$"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9_][a-z0-9_-]*(/[a-z0-9][a-z0-9-]*)?$"
+          }
+        }
+      ]
+    },
+    "detect": {
+      "$ref": "#/definitions/condition"
+    },
+    "extra": {
+      "type": "object",
+      "description": "Extra decision fields merged into the detection result."
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/command"
+      }
+    },
+    "runtime_image": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Base image for the final stage when building and running want different images. {version} is substituted from the resolved runtime requirement. Requires output_directory: what the build stage produced is what gets copied in."
+    }
+  },
+  "definitions": {
+    "condition": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "description": "Every key present must hold. An empty object matches nothing.",
+      "properties": {
+        "all": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/condition"
+          }
+        },
+        "any": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/condition"
+          }
+        },
+        "none": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/condition"
+          },
+          "description": "Negative rule: not one of these may match. This is how Static says 'an index.html and none of the manifests that would make this an application'."
+        },
+        "not": {
+          "$ref": "#/definitions/condition"
+        },
+        "file": {
+          "$ref": "#/definitions/stringOrList",
+          "description": "Root-level basename, lowercase."
+        },
+        "path": {
+          "$ref": "#/definitions/stringOrList",
+          "description": "File at a path relative to the project root."
+        },
+        "dir": {
+          "$ref": "#/definitions/stringOrList"
+        },
+        "glob": {
+          "$ref": "#/definitions/stringOrList",
+          "description": "Root file starting '<stem>.' \u2014 next.config.js|mjs|ts."
+        },
+        "dep": {
+          "$ref": "#/definitions/stringOrList",
+          "description": "package.json dependency or devDependency."
+        },
+        "script": {
+          "$ref": "#/definitions/stringOrList",
+          "description": "package.json scripts entry."
+        },
+        "composer": {
+          "$ref": "#/definitions/stringOrList",
+          "description": "composer.json require or require-dev key."
+        },
+        "probe": {
+          "$ref": "#/definitions/stringOrList",
+          "description": "Named platform probe, for detection JSON cannot express. Discovered by class name under Platform/Probes."
+        },
+        "contains": {
+          "type": "object",
+          "required": [
+            "pattern"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "glob": {
+              "type": "string"
+            },
+            "pattern": {
+              "type": "string"
+            },
+            "regex": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      }
+    },
+    "stringOrList": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        }
+      ]
+    },
+    "command": {
+      "type": "object",
+      "required": [
+        "run"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable name shown in deploy logs. Derived from `run` when omitted."
+        },
+        "stage": {
+          "description": "build = image build. install = first deploy only. upgrade = redeploy over existing data. start = every boot. A list means every listed stage \u2014 ['install','upgrade'] is how a migration says 'whenever the code changed, never on a restart'.",
+          "oneOf": [
+            {
+              "enum": [
+                "build",
+                "install",
+                "upgrade",
+                "start"
+              ]
+            },
+            {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "build",
+                  "install",
+                  "upgrade",
+                  "start"
+                ]
+              },
+              "minItems": 1
+            }
+          ]
+        },
+        "stages": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "build",
+              "install",
+              "upgrade",
+              "start"
+            ]
+          },
+          "minItems": 1
+        },
+        "run": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "dependencies",
+            "assets"
+          ],
+          "description": "Build-stage only. `dependencies` runs before the source is copied so BuildKit can cache it across deploys that did not touch the lockfile."
+        },
+        "serve": {
+          "type": "boolean",
+          "default": false,
+          "description": "The long-running process. Exactly one per manifest, start stage only, exec'd as the final line of the entrypoint."
+        },
+        "optional": {
+          "type": "boolean",
+          "default": false,
+          "description": "A failure is logged and the boot continues."
+        },
+        "before": {
+          "type": "boolean",
+          "description": "Run this command ahead of the platform's own for the stage, rather than after."
+        },
+        "when": {
+          "$ref": "#/definitions/condition",
+          "description": "Guard: the command applies only to projects matching this."
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Seconds."
+        },
+        "workdir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "description": "Why this command exists. Emitted as a comment in the entrypoint."
+        }
+      }
+    }
+  }
+}

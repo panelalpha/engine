@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  Magento Open Source from its own repository. The shipped `magento` recipe
+  gets the document root and the database right; what it cannot do alone is
+  give Magento a search engine or run an installer that wants credentials.
+  This directory adds both: an OpenSearch service in a compose override, and
+  an install script that generates the admin account on first deploy and
+  prints where to find it.
+extends: magento
+env:
+  # Magento's own pub/.user.ini raises the web request limit to 756M, and
+  # bin/magento is CLI, which gets PHP's 128M default. setup:install dies at
+  # module 245 of 904 with "Allowed memory size of 134217728 bytes exhausted".
+  # Every command below is invoked through php -d memory_limit=-1; this is for
+  # anything that is not.
+  PHP_MEMORY_LIMIT: '2048M'
+  MAGENTO_SEARCH_HOST: opensearch
+  MAGENTO_SEARCH_PORT: '9200'
+# These are layered onto the extended recipe's own commands rather than
+# replacing them -- an app config applies `commands` itself, on top of whatever
+# manifest is in play -- so `writable-dirs` is not repeated here. It runs
+# first, from the magento recipe, which is the order this needs.
+commands:
+  - id: magento-install
+    stage: [install]
+    description: 'setup:install, then setup:di:compile. Both are skipped when app/etc/env.php already exists, so a redeploy does not reinstall over a live store.'
+    run: 'bash /app/panelalpha/install.sh install'
+  - id: magento-upgrade
+    stage: [upgrade]
+    description: 'setup:upgrade and di:compile against the store that is already there. Does nothing until an install has happened.'
+    run: 'bash /app/panelalpha/install.sh upgrade'

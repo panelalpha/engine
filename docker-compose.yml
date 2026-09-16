@@ -1,0 +1,345 @@
+include:
+  - docker-compose.yml-webserver
+services:
+  core:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-core
+      target: php_nginx_prod
+    image: ghcr.io/panelalpha/engine-core:20260908
+    pull_policy: missing
+    restart: always
+    depends_on:
+      - core-redis
+    post_start:
+      - command: php artisan system:database:test --retries=10
+      - command: php artisan system:ip:sync --skip-errors
+    hostname: core.shared-hosting.palocal
+    privileged: true
+    pid: host
+    volumes:
+      - ./core:/var/www/html
+      - ./.env-core:/var/www/html/.env
+      - ./config/core/nginx.conf:/etc/nginx/nginx.conf
+      - ./config/core/images.yaml:/var/www/config/core/images.yaml:ro
+      - ./config/core/php.ini:/etc/php/8.3/cli/conf.d/90-panelalpha.ini
+      - ./config/core/php.ini:/etc/php/8.3/fpm/conf.d/90-panelalpha.ini
+      - ./config/core/php-fpm-pool.conf:/etc/php/8.3/fpm/pool.d/zz-docker.conf
+      - ./config/core/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf
+      - ./logs/core/nginx:/var/log/nginx
+      - ./logs/core/supervisor:/var/log/supervisor
+      - core-storage:/var/www/html/storage
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker:/var/lib/docker
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/lib/letsencrypt:/var/lib/letsencrypt
+      - /etc/csf:/etc/csf
+      - /opt/panelalpha:/opt/panelalpha
+      - /home:/home
+      - /var/tmp/panelalpha-backup:/var/tmp/panelalpha-backup
+      - ./dockerfiles/entrypoint-core.sh:/entrypoint.sh
+    command: bash /entrypoint.sh
+    environment:
+      - "DB_HOST=database-core.shared-hosting.palocal"
+      - "DB_DATABASE=core"
+      - "DB_USERNAME=core"
+      - "DB_PASSWORD=${CORE_MYSQL_PASSWORD}"
+      - "USERS_DB_HOST=database-users.shared-hosting.palocal"
+      - "USERS_DB_USERNAME=root"
+      - "USERS_DB_PASSWORD=${USERS_MYSQL_ROOT_PASSWORD}"
+      - "METRICS_LIMIT_DAYS=${METRICS_LIMIT_DAYS:-90}"
+      - "METRICS_LIMIT_ENTRIES=${METRICS_LIMIT_ENTRIES:-1000000}"
+      - "QUEUE_CONNECTION=redis"
+      - "REDIS_HOST=redis.shared-hosting.palocal"
+    mem_limit: ${MEM_LIMIT_CORE:-3G}
+    memswap_limit: ${MEMSWAP_LIMIT_CORE:-0}
+  mail:
+    profiles: ["mail", "full"]
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-exim
+    image: ghcr.io/panelalpha/engine-exim:20260526
+    pull_policy: missing
+    restart: always
+    hostname: exim.shared-hosting.palocal
+    network_mode: host
+    volumes:
+      - ./config/exim/update-exim4.conf.conf:/etc/exim4/update-exim4.conf.conf
+      - ./config/exim/passwd.client:/etc/exim4/passwd.client
+      - ./config/exim/main.conf:/etc/exim4/conf.d/main/90_panelalpha_main
+      - ./config/exim/acl.conf:/etc/exim4/conf.d/acl/90_panelalpha_acl
+      - ./config/exim/router.conf:/etc/exim4/conf.d/router/90_panelalpha_router
+      - ./config/exim/transport.conf:/etc/exim4/conf.d/transport/20_panelalpha_transport
+      - ./config/exim/rewrite.conf:/etc/exim4/conf.d/rewrite/90_panelalpha_rewrite
+      - ./config/exim/auth.conf:/etc/exim4/conf.d/auth/90_panelalpha_auth
+    mem_limit: ${MEM_LIMIT_MAIL:-${MEM_LIMIT_EXIM:-3G}}
+    memswap_limit: ${MEMSWAP_LIMIT_MAIL:-${MEMSWAP_LIMIT_EXIM:-0}}
+  sites-dns:
+    profiles: ["hosting", "full"]
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-dns-proxy
+    image: ghcr.io/panelalpha/engine-dns-proxy:20260526
+    pull_policy: missing
+    restart: always
+    hostname: dns-proxy.shared-hosting.palocal
+    ports:
+      - "127.0.0.54:53:53/udp"
+    command: UDP4-RECVFROM:53,fork,reuseaddr UDP4-SENDTO:127.0.0.11:53
+  metrics:
+    profiles: ["metrics", "full"]
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-metrics
+    image: ghcr.io/panelalpha/engine-metrics:20260526
+    pull_policy: missing
+    volumes_from:
+      - core
+    restart: always
+    network_mode: host
+    privileged: true
+    volumes:
+      - "./scripts/server_metrics.py:/scripts/server_metrics.py"
+    environment:
+      - "DB_HOST=database-core.shared-hosting.palocal"
+      - "DB_DATABASE=core"
+      - "DB_USERNAME=core"
+      - "DB_PASSWORD=${CORE_MYSQL_PASSWORD}"
+      - "METRICS_SNAPSHOT_INTERVAL=${METRICS_SNAPSHOT_INTERVAL:-5}"
+    mem_limit: ${MEM_LIMIT_METRICS:-1G}
+    memswap_limit: ${MEMSWAP_LIMIT_METRICS:-0}
+  core-cron:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-core
+      target: php_cron_prod
+    image: ghcr.io/panelalpha/engine-cron:20260908
+    pull_policy: missing
+    depends_on:
+      - core
+    restart: always
+    volumes_from:
+      - core
+    volumes:
+      - ./config/logrotate:/etc/logrotate.d
+      - ./data/logrotate:/var/lib/logrotate
+    environment:
+      - "APP_ENV=cron"
+      - "DB_HOST=database-core.shared-hosting.palocal"
+      - "DB_DATABASE=core"
+      - "DB_USERNAME=core"
+      - "DB_PASSWORD=${CORE_MYSQL_PASSWORD}"
+      - "USERS_DB_HOST=database-users.shared-hosting.palocal"
+      - "USERS_DB_USERNAME=root"
+      - "USERS_DB_PASSWORD=${USERS_MYSQL_ROOT_PASSWORD}"
+      - "QUEUE_CONNECTION=redis"
+      - "REDIS_HOST=redis.shared-hosting.palocal"
+    mem_limit: ${MEM_LIMIT_CORE_CRON:-${MEM_LIMIT_CRON:-3G}}
+    memswap_limit: ${MEMSWAP_LIMIT_CORE_CRON:-${MEMSWAP_LIMIT_CRON:-0}}
+  core-queue:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-core
+      target: php_prod
+    image: ghcr.io/panelalpha/engine-queue-worker:20260908
+    pull_policy: missing
+    hostname: queue-worker.shared-hosting.palocal
+    depends_on:
+      - core
+      - core-redis
+    privileged: true
+    pid: host
+    user: "www-data"
+    command: "php artisan horizon"
+    restart: always
+    volumes_from:
+      - core
+    working_dir: /var/www/html
+    environment:
+      - "DB_HOST=database-core.shared-hosting.palocal"
+      - "DB_DATABASE=core"
+      - "DB_USERNAME=core"
+      - "DB_PASSWORD=${CORE_MYSQL_PASSWORD}"
+      - "USERS_DB_HOST=database-users.shared-hosting.palocal"
+      - "USERS_DB_USERNAME=root"
+      - "USERS_DB_PASSWORD=${USERS_MYSQL_ROOT_PASSWORD}"
+      - "QUEUE_CONNECTION=redis"
+      - "REDIS_HOST=redis.shared-hosting.palocal"
+    mem_limit: ${MEM_LIMIT_CORE_QUEUE:-${MEM_LIMIT_QUEUE_WORKER:-3G}}
+    memswap_limit: ${MEMSWAP_LIMIT_CORE_QUEUE:-${MEMSWAP_LIMIT_QUEUE_WORKER:-0}}
+  core-redis:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-redis
+    image: ghcr.io/panelalpha/engine-redis:20260908
+    pull_policy: missing
+    restart: always
+    hostname: redis.shared-hosting.palocal
+    volumes:
+      - ./data/redis:/data
+    mem_limit: ${MEM_LIMIT_CORE_REDIS:-${MEM_LIMIT_REDIS:-3G}}
+    memswap_limit: ${MEMSWAP_LIMIT_CORE_REDIS:-${MEMSWAP_LIMIT_REDIS:-0}}
+  core-db:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-database
+    image: ghcr.io/panelalpha/app-database:20260525
+    pull_policy: missing
+    restart: always
+    hostname: database-core.shared-hosting.palocal
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - database-core-data:/var/lib/mysql
+    environment:
+      - "MYSQL_DATABASE=core"
+      - "MYSQL_USER=core"
+      - "MYSQL_PASSWORD=${CORE_MYSQL_PASSWORD}"
+      - "MYSQL_RANDOM_ROOT_PASSWORD=yes"
+      - "MARIADB_AUTO_UPGRADE=1"
+    mem_limit: ${MEM_LIMIT_CORE_DB:-${MEM_LIMIT_DATABASE_CORE:-3G}}
+    memswap_limit: ${MEMSWAP_LIMIT_CORE_DB:-${MEMSWAP_LIMIT_DATABASE_CORE:-0}}
+  core-http:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-nginx
+    image: ghcr.io/panelalpha/app-nginx:20260525
+    pull_policy: missing
+    depends_on:
+      - core
+    restart: always
+    hostname: nginx.shared-hosting.palocal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "2011:2011"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./crt:/root/crt
+    mem_limit: ${MEM_LIMIT_CORE_HTTP:-${MEM_LIMIT_NGINX:-3G}}
+    memswap_limit: ${MEMSWAP_LIMIT_CORE_HTTP:-${MEMSWAP_LIMIT_NGINX:-0}}
+  ftp:
+    profiles: ["ftp", "full"]
+    build:
+      context: ./config/pure-ftpd/build
+      args:
+        VERSION: 1.0.51
+    image: ghcr.io/panelalpha/engine-pure-ftpd:20260105
+    pull_policy: missing
+    restart: always
+    hostname: pure-ftpd.shared-hosting.palocal
+    ports:
+      - "21:21"
+      - "30000-30009:30000-30009"
+    volumes:
+      - /home:/home/ftpuser
+      - ./pureftpd:/etc/pureftpd
+      - ./config/pure-ftpd/entrypoint.sh:/usr/bin/entrypoint.sh
+    mem_limit: ${MEM_LIMIT_FTP:-${MEM_LIMIT_PURE_FTPD:-3G}}
+    memswap_limit: ${MEMSWAP_LIMIT_FTP:-${MEMSWAP_LIMIT_PURE_FTPD:-0}}
+  sftp:
+    profiles: ["ftp", "full"]
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-sftp
+    image: ghcr.io/panelalpha/engine-sftp:20260526
+    pull_policy: missing
+    restart: always
+    hostname: sftp.shared-hosting.palocal
+    ports:
+      - "2222:22"
+    volumes:
+      - ./config/sftp/ssh_host_ed25519_key:/etc/ssh/ssh_host_ed25519_key
+      - ./config/sftp/ssh_host_rsa_key:/etc/ssh/ssh_host_rsa_key
+      - ./config/sftp/logins.conf:/etc/sftp/logins.conf
+      - ./config/sftp/sync-logins.sh:/etc/sftp/sync-logins.sh
+      - ./config/sftp/entrypoint.sh:/entrypoint.sh
+      - /home:/home
+    entrypoint: ["/bin/bash", "/entrypoint.sh"]
+    mem_limit: ${MEM_LIMIT_SFTP:-3G}
+    memswap_limit: ${MEMSWAP_LIMIT_SFTP:-0}
+  sites-db:
+    profiles: ["hosting", "phpmyadmin", "full"]
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-database
+    image: ghcr.io/panelalpha/app-database:20260525
+    pull_policy: missing
+    restart: always
+    hostname: database-users.shared-hosting.palocal
+    volumes:
+      - database-users-data:/var/lib/mysql
+    environment:
+      - "MYSQL_ROOT_PASSWORD=${USERS_MYSQL_ROOT_PASSWORD}"
+      - "MARIADB_AUTO_UPGRADE=1"
+    mem_limit: ${MEM_LIMIT_SITES_DB:-${MEM_LIMIT_DATABASE_USERS:-3G}}
+    memswap_limit: ${MEMSWAP_LIMIT_SITES_DB:-${MEMSWAP_LIMIT_DATABASE_USERS:-0}}
+  sites-phpmyadmin:
+    profiles: ["phpmyadmin", "full"]
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-phpmyadmin-users
+    image: ghcr.io/panelalpha/engine-phpmyadmin-users:20260526
+    pull_policy: missing
+    restart: always
+    hostname: phpmyadmin-users.shared-hosting.palocal
+    volumes:
+      - ./phpmyadmin-users/config.user.inc.php:/etc/phpmyadmin/config.user.inc.php
+      - ./phpmyadmin-users/signon.php:/var/www/html/signon.php
+    links:
+      - sites-db:db
+    environment:
+      - PMA_HOST=sites-db
+      - UPLOAD_LIMIT=${PHPMYADMIN_UPLOAD_LIMIT:-2048M}
+    depends_on:
+      - sites-db
+    mem_limit: ${MEM_LIMIT_SITES_PHPMYADMIN:-${MEM_LIMIT_PHPMYADMIN_USERS:-3G}}
+    memswap_limit: ${MEMSWAP_LIMIT_SITES_PHPMYADMIN:-${MEMSWAP_LIMIT_PHPMYADMIN_USERS:-0}}
+  # Optional. A local registry used to move base images into account daemons:
+  # the host pushes, the account pulls, and `pull` fetches only the layers the
+  # account is missing while `docker save` streams all of them. Measured on a
+  # 1.0GB base: no difference into an empty account (56s against 57s), 1s
+  # against 17s for an image sharing layers with one already there.
+  #
+  # Nothing requires it. Without this container every transfer falls back to
+  # `docker save | docker load`, which is slower only where layers overlap --
+  # a second PHP minor, a variant beside a plain base, a redeploy.
+  #
+  # The container name is load-bearing: every account daemon is created with
+  # `panelalpha-cache-registry:5000` in its `insecure-registries`, and that is
+  # the name DindImageStore probes and pushes to.
+  cache-registry:
+    profiles: ["cache-registry", "full"]
+    image: registry:2
+    pull_policy: missing
+    container_name: panelalpha-cache-registry
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - cache-registry-data:/var/lib/registry
+    mem_limit: ${MEM_LIMIT_CACHE_REGISTRY:-1G}
+    memswap_limit: ${MEMSWAP_LIMIT_CACHE_REGISTRY:-0}
+  lighthouse:
+    profiles: ["lighthouse", "full"]
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-lighthouse
+    image: ghcr.io/panelalpha/engine-lighthouse:20260526
+    pull_policy: missing
+    init: true
+    restart: "always"
+    command: tail -f /dev/null
+    volumes:
+      - ./data/lighthouse:/data
+    mem_limit: ${MEM_LIMIT_LIGHTHOUSE:-3G}
+    memswap_limit: ${MEMSWAP_LIMIT_LIGHTHOUSE:-0}
+volumes:
+  cache-registry-data: {}
+  core-storage: {}
+  database-core-data: {}
+  database-users-data: {}
+networks:
+  default:
+    name: pash-default-network
+    external: true

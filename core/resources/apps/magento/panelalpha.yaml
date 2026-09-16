@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: magento
+strategy: php
+label: Magento
+priority: 943
+runtime: php
+port: 8000
+docroot: pub
+# Magento's document root is pub/, not the repository root. Served from the
+# root, its own .htaccess redirects into pub/ and the request bounces until
+# curl gives up at fifty hops -- a 302 loop, which is not something a status
+# code alone would tell you.
+env:
+  APP_ENV: production
+  LOG_CHANNEL: stderr
+requires:
+  php: runtime
+# MySQL 8 / MariaDB is the only database Magento supports, and its installer
+# needs credentials it has no environment variable to read.
+database: mysql
+detect:
+  all:
+    - file: composer.json
+    - path: bin/magento
+    - path: pub/index.php
+    - path: app/etc/di.xml
+commands:
+  - id: writable-dirs
+    stage: [install, upgrade]
+    description: 'Magento generates code into generated/, caches and logs into var/, and publishes assets into pub/static and pub/media. None of the four is in the repository, and setup:install stops on the first one it cannot create.'
+    run: 'mkdir -p /app/var /app/generated /app/pub/static /app/pub/media && chmod -R 775 /app/var /app/generated /app/pub/static /app/pub/media'

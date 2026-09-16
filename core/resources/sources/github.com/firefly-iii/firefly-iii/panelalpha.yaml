@@ -1,0 +1,60 @@
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  Firefly III is a Laravel personal-finance manager. The shipped `laravel`
+  recipe gets the document root, the database and the frontend build right;
+  what it cannot know is that Firefly ships its own console commands and
+  refuses to serve a single page until they have run.
+
+  Every route except the installer goes through Firefly's `Installer`
+  middleware, which calls `OAuthKeys::verifyKeysRoutine()` and runs
+  `firefly-iii:laravel-passport-keys` through `Artisan::call()`. That call
+  resolves against the console kernel's discovered commands, and under Apache
+  the HTTP kernel has never booted a console kernel for it — the command is
+  not found, `CommandNotFoundException` is thrown out of the middleware, and
+  `/login` answers 500 while the container looks perfectly healthy. Its own
+  Docker image works because its entrypoint runs the same command from the
+  CLI first (`/usr/local/bin/entrypoint.sh`), which caches the command list.
+
+  The commands below are that entrypoint's sequence, expressed as deploy
+  stages: create/upgrade the database and generate the OAuth keypair on
+  install, and re-run both on upgrade so a redeploy over existing data stays
+  current. They are idempotent by Firefly's own design — `upgrade-database`
+  is what its docs tell an operator to run, and `laravel-passport-keys`
+  reports "Encryption keys exist already" rather than rotating them.
+extends: laravel
+commands:
+  - id: firefly-database
+    stage:
+      - install
+      - upgrade
+    description: >-
+      `firefly-iii:create-database` makes the schema if it is missing, and
+      `firefly-iii:upgrade-database` migrates it to the current version and
+      records the application version it now holds. Both are what Firefly's
+      own image entrypoint runs on every boot; `migrate` alone leaves the
+      version row at zero, which makes the app redirect to its migrate
+      routine.
+    run: 'php artisan firefly-iii:create-database && php artisan firefly-iii:upgrade-database'
+    timeout: 600
+  - id: firefly-passport-keys
+    stage:
+      - install
+      - upgrade
+    description: >-
+      Generates the Passport keypair that verifies the OAuth keypair routine
+      in Firefly's Installer middleware depends on, and stores it in the
+      database and in storage/ so a rebuilt container restores it rather than
+      minting a new one. This is the command whose absence was the 500.
+    run: 'php artisan firefly-iii:laravel-passport-keys'
+    optional: true
+  - id: firefly-latest-version
+    stage:
+      - install
+      - upgrade
+    description: >-
+      Firefly stores the database's "last managed by" version and compares it
+      on every request; left at zero it sends visitors to the migrate routine
+      instead of the login page. `--james-is-cool` is the flag its own
+      entrypoint passes to acknowledge that this is an automated run.
+    run: 'php artisan firefly-iii:set-latest-version --james-is-cool'
+    optional: true

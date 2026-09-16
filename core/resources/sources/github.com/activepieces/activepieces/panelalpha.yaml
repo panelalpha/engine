@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  Activepieces on its own compose stack, with an override that mounts the
+  app-management helper and gives the app the memory current builds need.
+  The precheck refuses a host with less than 2 GB; the prepare hook runs the
+  repository's own tools/deploy.sh to generate .env.

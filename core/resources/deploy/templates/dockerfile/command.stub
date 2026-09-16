@@ -1,0 +1,12 @@
+FROM {{ image }}
+WORKDIR /app
+COPY . .
+{{ env }}
+{{# install_command }}
+RUN {{ install_command }}
+{{/ install_command }}
+{{# build_command }}
+RUN {{ build_command }}
+{{/ build_command }}
+EXPOSE {{ port }}
+{{ entrypoint }}

@@ -1,0 +1,72 @@
+<?php
+
+namespace App\Lib\Deploy\Platform\Runtime\Ruby;
+
+use App\Lib\Deploy\Platform\Runtime\RubyRuntime;
+
+use App\Lib\Deploy\Platform\Dockerfile\EnvironmentLines;
+use App\Lib\Deploy\Platform\DockerfileBuilder;
+use App\Lib\Deploy\Template\Template;
+
+/**
+ * Production Dockerfile for a Ruby app that ships none of its own.
+ *
+ * A Dockerfile the author wrote stays authoritative, exactly as it does over
+ * railpack, so this is what a bare `rails new` gets rather than a replacement
+ * for one somebody maintains. Gems are bundled in the Ruby stage and the
+ * frontend in a Node one, so nothing boots Rails until the container starts.
+ *
+ * Named panelalpha.Dockerfile so the next detect pass still sees Rails, not a
+ * user-owned Dockerfile.
+ */
+final class RubyDockerfile
+{
+    public const FILENAME = DockerfileBuilder::FILENAME;
+
+    private readonly bool $prebuilt;
+
+    public function __construct(
+        private readonly RubyApp $app,
+        private readonly int $port = RubyServer::PORT,
+        private readonly ?string $baseImage = null
+    ) {
+        $this->prebuilt = $baseImage !== null && $baseImage !== '';
+    }
+
+    /**
+     * @param array<string, true> $files lowercase basename => true
+     */
+    public static function generate(
+        string $projectDir,
+        array $files,
+        ?int $portHint = null,
+        ?string $baseImage = null
+    ): string {
+        $port = $portHint !== null && $portHint > 0 ? $portHint : RubyServer::PORT;
+
+        return (new self(RubyApp::at($projectDir, $files), $port, $baseImage))->render();
+    }
+
+    public function render(): string
+    {
+        return Template::named('dockerfile/ruby')->render([
+            'ruby_image' => $this->baseImage(),
+            'prebuilt' => $this->prebuilt,
+            'system_packages' => implode(' ', SystemPackages::for($this->app->gemfile())),
+            'bundle_deployment' => $this->app->hasLockfile(),
+            'environment' => EnvironmentLines::of(RubyEnvironment::for($this->app)),
+            'frontend_stage' => FrontendStage::render($this->app),
+            'port' => $this->port,
+            'start_command' => RubyServer::command($this->app, $this->port),
+        ]);
+    }
+
+    /**
+     * A host-built base already carries the apt packages, so the account's
+     * build starts at `bundle install`.
+     */
+    private function baseImage(): string
+    {
+        return $this->prebuilt ? (string) $this->baseImage : RubyRuntime::imageFor($this->app->project);
+    }
+}

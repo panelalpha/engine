@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: vite
+label: Vite
+priority: 890
+runtime: nginx
+port: 8080
+output_directory: dist
+requires:
+  node:
+    role: build
+detect:
+  any:
+    - glob: vite.config
+    - dep: vite
+  # Vite sits *above* express (890 against 888) because the ordinary Vite
+  # project is an SPA that express would otherwise never reach -- it has no
+  # express. The order only breaks when a project has both, and then express is
+  # right: a server dependency means something has to be served, and Vite was
+  # only ever the asset step.
+  #
+  # kresus is the case. It has `vite` (the SPA it builds) *and* `express` with
+  # `typeorm`, a `start` of `node bin/kresus.js`, and its own
+  # `build:server`/`build:prod` scripts -- a server-rendered app whose front end
+  # happens to be built by Vite. Claimed here, it went down the static path and
+  # the deploy died on `Static build finished but dist/index.html is missing`:
+  # kresus writes `build/client/index.html`, because its vite.config sets
+  # `root: './client'` and `outDir: '../build/client'`.
+  #
+  # {@see BundlerSpaProbe::SERVER_DEPS} is the same exclusion, reached through
+  # the probe; this is it as a manifest rule so it applies before priority does.
+  none:
+    - dep: express
+    - dep: fastify
+    - dep: koa
+    - dep: '@hapi/hapi'
+    - dep: restify
+    - dep: '@nestjs/core'
+    - dep: next
+    - dep: nuxt
+    - dep: hono
+    - dep: h3
+    - dep: '@adonisjs/core'
+    - dep: '@feathersjs/feathers'
+    - dep: '@remix-run/serve'
+    - dep: socket.io
+    - dep: '@sveltejs/adapter-node'
+commands:
+  - id: npm-install
+    stage: build
+    role: dependencies
+    run: '{{js.install}}'
+    description: "Resolved from the project's lockfile — npm ci, pnpm install --frozen-lockfile, yarn or bun."
+  - id: vite-build
+    stage: build
+    run: '{{js.build:npx vite build}}'
+    description: "The project's own build script wins over this default when package.json defines one."

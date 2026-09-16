@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../_schema.json
+#
+# The framework's own congratulations page, where the application should be.
+#
+# Django and Rails both ship a welcome page that a new project serves at `/`
+# until something is routed there, and both are cheerful, valid, 200 responses.
+# Seeing one after a deploy means the framework installed and the application
+# did not: an empty skeleton was deployed, or the routes were never reached.
+#
+# A warning rather than an error. It is a genuine state for a project that has
+# just been generated and not yet written, and a first deploy of a fresh
+# `django-admin startproject` is not a broken deploy -- it is one nobody has
+# put an application into yet.
+id: not-a-framework-default-page
+severity: warning
+serving: framework_default
+expect:
+  body_not:
+    - 'The install worked successfully! Congratulations!'
+    - "Yay! You&rsquo;re on Rails!"
+    - "Yay! You're on Rails!"
+message: 'The site is serving the framework''s new-project page, not an application.'
+fix: 'Nothing is routed at `/` yet. This is what a freshly generated project serves before any of it is written.'

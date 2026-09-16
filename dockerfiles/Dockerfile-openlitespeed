@@ -1,0 +1,1 @@
+FROM litespeedtech/openlitespeed:1.9.0-lsphp85

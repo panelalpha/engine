@@ -1,0 +1,30 @@
+services:
+  sites-http:
+    profiles: ["hosting", "full"]
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile-nginx
+    image: ghcr.io/panelalpha/app-nginx:20260525
+    pull_policy: missing
+    labels:
+      - com.panelalpha.webserver=nginx
+    depends_on:
+      - core
+    restart: always
+    hostname: webserver.shared-hosting.palocal
+    network_mode: host
+    dns:
+      - 127.0.0.54
+    volumes:
+      - /home:/home
+      - ./webserver-config/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./webserver-config/nginx/vhosts:/etc/nginx/conf.d
+      - ./third-party/modsecurity-3.0.15/lib/libmodsecurity.so.3.0.15:/usr/lib/libmodsecurity.so.3
+      - ./third-party/modsecurity-3.0.15/deps/libyajl.so.2:/usr/lib/libyajl.so.2
+      - ./third-party/modsecurity-3.0.15/connector-nginx-1.31.1/ngx_http_modsecurity_module.so:/etc/nginx/modules/ngx_http_modsecurity_module.so
+      - ./config/modsecurity:/opt/modsecurity
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/lib/letsencrypt:/var/lib/letsencrypt
+      - /opt/panelalpha:/opt/panelalpha
+    mem_limit: ${MEM_LIMIT_SITES_HTTP_NGINX:-${MEM_LIMIT_WEBSERVER_NGINX:-3G}}
+    memswap_limit: ${MEMSWAP_LIMIT_SITES_HTTP_NGINX:-${MEMSWAP_LIMIT_WEBSERVER_NGINX:-0}}

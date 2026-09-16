@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../_schema.json
+#
+# The webserver's own welcome page, served where the application should be.
+#
+# The image came up, the port answers, and what it is serving is the document
+# root the base image ships -- so the deploy is green and the site is a page
+# congratulating somebody on installing nginx.
+#
+# This is the failure of the two runtimes the engine knows least about. For
+# `runtime: nginx` or `php` the engine wrote the configuration and chose the
+# root, so it essentially cannot happen; for a hand-written Dockerfile or a
+# repository's own compose file, a COPY that landed one directory off is
+# exactly this page. It sits in the baseline rather than in those two groups
+# because the evidence is a fixed string in a stock image, identical whoever
+# built it -- and because the alternative was the same file written out twice.
+id: not-a-stock-default-page
+severity: error
+serving: default_page
+expect:
+  body_not:
+    - 'Welcome to nginx!'
+    - 'Apache2 Ubuntu Default Page'
+    - 'Apache2 Debian Default Page'
+    - 'Test Page for the Apache HTTP Server'
+message: 'The site is serving the webserver''s default page, not the application.'
+fix: 'The application was not copied to the document root the image serves from. Check the COPY paths and the server root in the Dockerfile or compose file.'

@@ -1,0 +1,272 @@
+[
+ {
+  "iid": "1340",
+  "title": "ClyoCloud",
+  "repo": "https://code.weexnes.dev/ClyoCloud"
+ },
+ {
+  "iid": "1288",
+  "title": "Gancio",
+  "repo": "https://framagit.org/les/gancio"
+ },
+ {
+  "iid": "1226",
+  "title": "not-th.re",
+  "repo": "https://github.com/not-three/main"
+ },
+ {
+  "iid": "1223",
+  "title": "Mybucks.online",
+  "repo": "https://github.com/mybucks-online/app"
+ },
+ {
+  "iid": "1214",
+  "title": "Hive-Pal",
+  "repo": "https://github.com/martinhrvn/hive-pal"
+ },
+ {
+  "iid": "1162",
+  "title": "DePay",
+  "repo": "https://github.com/depayfi/widgets"
+ },
+ {
+  "iid": "1160",
+  "title": "PrivyDrop",
+  "repo": "https://github.com/david-bai00/PrivyDrop"
+ },
+ {
+  "iid": "1115",
+  "title": "Bubo Reader",
+  "repo": "https://github.com/georgemandis/bubo-rss"
+ },
+ {
+  "iid": "1108",
+  "title": "URL-to-PNG",
+  "repo": "https://github.com/jasonraimondi/url-to-png"
+ },
+ {
+  "iid": "1089",
+  "title": "Mere Medical",
+  "repo": "https://github.com/cfu288/mere-medical"
+ },
+ {
+  "iid": "1087",
+  "title": "string.is",
+  "repo": "https://github.com/recurser/string-is"
+ },
+ {
+  "iid": "1074",
+  "title": "Kresus",
+  "repo": "https://github.com/kresusapp/kresus"
+ },
+ {
+  "iid": "1057",
+  "title": "SyncTube",
+  "repo": "https://github.com/RblSb/SyncTube"
+ },
+ {
+  "iid": "1052",
+  "title": "FlowForge",
+  "repo": "https://github.com/FlowFuse/flowfuse"
+ },
+ {
+  "iid": "1030",
+  "title": "gathio",
+  "repo": "https://github.com/lowercasename/gathio"
+ },
+ {
+  "iid": "1026",
+  "title": "Operational.co",
+  "repo": "https://github.com/operational-co/operational.co"
+ },
+ {
+  "iid": "1019",
+  "title": "Suroi",
+  "repo": "https://github.com/HasangerGames/suroi"
+ },
+ {
+  "iid": "1012",
+  "title": "MiroTalk C2C",
+  "repo": "https://github.com/miroslavpejic85/mirotalkc2c"
+ },
+ {
+  "iid": "1001",
+  "title": "Graphweaver",
+  "repo": "https://github.com/exogee-technology/graphweaver"
+ },
+ {
+  "iid": "977",
+  "title": "Stretto",
+  "repo": "https://github.com/benkaiser/stretto"
+ },
+ {
+  "iid": "971",
+  "title": "Enigma 1/2 BBS",
+  "repo": "https://github.com/NuSkooler/enigma-bbs"
+ },
+ {
+  "iid": "966",
+  "title": "Firefox Account Server",
+  "repo": "https://github.com/mozilla/fxa"
+ },
+ {
+  "iid": "954",
+  "title": "Mafl",
+  "repo": "https://github.com/hywax/mafl"
+ },
+ {
+  "iid": "941",
+  "title": "Servas",
+  "repo": "https://github.com/beromir/Servas"
+ },
+ {
+  "iid": "930",
+  "title": "Karaoke Eternal",
+  "repo": "https://github.com/bhj/KaraokeEternal"
+ },
+ {
+  "iid": "916",
+  "title": "RecipeSage",
+  "repo": "https://github.com/julianpoy/recipesage"
+ },
+ {
+  "iid": "910",
+  "title": "Bitcart",
+  "repo": "https://github.com/bitcart/bitcart"
+ },
+ {
+  "iid": "907",
+  "title": "Kiwi IRC",
+  "repo": "https://github.com/kiwiirc/kiwiirc"
+ },
+ {
+  "iid": "867",
+  "title": "ioBroker",
+  "repo": "https://github.com/ioBroker/ioBroker"
+ },
+ {
+  "iid": "843",
+  "title": "AirTrail",
+  "repo": "https://github.com/johanohly/AirTrail"
+ },
+ {
+  "iid": "840",
+  "title": "CyTube",
+  "repo": "https://github.com/calzoneman/sync"
+ },
+ {
+  "iid": "832",
+  "title": "Forward Email",
+  "repo": "https://github.com/forwardemail/forwardemail.net"
+ },
+ {
+  "iid": "817",
+  "title": "Sync-in",
+  "repo": "https://github.com/Sync-in/server"
+ },
+ {
+  "iid": "809",
+  "title": "Fluidd",
+  "repo": "https://github.com/fluidd-core/fluidd"
+ },
+ {
+  "iid": "796",
+  "title": "bittorrent-tracker",
+  "repo": "https://github.com/webtorrent/bittorrent-tracker"
+ },
+ {
+  "iid": "795",
+  "title": "Zenko CloudServer",
+  "repo": "https://github.com/scality/cloudserver"
+ },
+ {
+  "iid": "791",
+  "title": "Coral",
+  "repo": "https://github.com/coralproject/talk"
+ },
+ {
+  "iid": "789",
+  "title": "SIPCAPTURE Homer",
+  "repo": "https://github.com/sipcapture/homer"
+ },
+ {
+  "iid": "781",
+  "title": "Saltcorn",
+  "repo": "https://github.com/saltcorn/saltcorn"
+ },
+ {
+  "iid": "768",
+  "title": "Azimutt",
+  "repo": "https://github.com/azimuttapp/azimutt"
+ },
+ {
+  "iid": "762",
+  "title": "PiGallery 2",
+  "repo": "https://github.com/bpatrik/pigallery2"
+ },
+ {
+  "iid": "758",
+  "title": "Chitchatter",
+  "repo": "https://github.com/jeremyckahn/chitchatter"
+ },
+ {
+  "iid": "721",
+  "title": "Libredesk",
+  "repo": "https://github.com/abhinavxd/libredesk"
+ },
+ {
+  "iid": "719",
+  "title": "Raneto",
+  "repo": "https://github.com/ryanlelek/Raneto"
+ },
+ {
+  "iid": "718",
+  "title": "One Time Secret",
+  "repo": "https://github.com/onetimesecret/onetimesecret"
+ },
+ {
+  "iid": "713",
+  "title": "Shelf",
+  "repo": "https://github.com/Shelf-nu/shelf.nu"
+ },
+ {
+  "iid": "1379",
+  "title": "Feather Wiki",
+  "repo": "https://codeberg.org/Alamantus/FeatherWiki"
+ },
+ {
+  "iid": "1176",
+  "title": "Antville",
+  "repo": "https://github.com/antville/antville"
+ },
+ {
+  "iid": "1101",
+  "title": "Genea.app",
+  "repo": "https://github.com/genea-app/genea-app"
+ },
+ {
+  "iid": "1021",
+  "title": "Titra",
+  "repo": "https://github.com/titraio/titra"
+ },
+ {
+  "iid": "798",
+  "title": "Apaxy",
+  "repo": "https://github.com/oupala/apaxy"
+ },
+ {
+  "iid": "487",
+  "title": "revealjs",
+  "repo": "https://github.com/hakimel/reveal.js"
+ },
+ {
+  "iid": "123",
+  "title": "Notifo",
+  "repo": "https://github.com/notifo-io/notifo"
+ },
+ {
+  "iid": "92",
+  "title": "Swetrix",
+  "repo": "https://github.com/Swetrix/selfhosting"
+ }
+]

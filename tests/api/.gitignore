@@ -1,0 +1,8 @@
+node_modules/
+.playwright/
+playwright-report/
+test-results/
+
+# Environment files — everything except the template
+env/.env*
+!env/.env.example

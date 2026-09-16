@@ -1,0 +1,6 @@
+FROM python:3.12-slim-trixie
+
+RUN pip install psutil mysql-connector-python
+
+WORKDIR /scripts
+CMD ["python", "server_metrics.py"]

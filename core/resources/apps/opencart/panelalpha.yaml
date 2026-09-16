@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: opencart
+strategy: php
+label: OpenCart
+priority: 972
+runtime: php
+port: 8000
+docroot: upload
+# Priority 972 puts this above the generic Dockerfile platform (970), which is
+# not the usual arrangement for an application manifest. OpenCart's root
+# Dockerfile does not build the checkout: it downloads the latest GitHub
+# release and unzips that instead, so deploying a tag would silently ship a
+# different version. In 4.1.0.4 it cannot build at all -- a stray ` && &&` in
+# the extension install, and a `COPY configs` for a directory the repository
+# does not contain. The repository's compose file is a workstation stack
+# (adminer, mysql:5.7, published ports, admin/admin credentials) and is
+# rejected before this by the compose probe.
+#
+# OpenCart's repository is not laid out like its release: the shop lives in
+# upload/, while composer.json stays at the top with
+# `vendor-dir: upload/system/storage/vendor`. That rules out app_root -- there
+# is no composer.json inside upload/, and moving the image root there would
+# resolve vendor/ to the wrong place. The image root stays the repository and
+# only the document root moves.
+env:
+  APP_ENV: production
+  LOG_CHANNEL: stderr
+requires:
+  php: runtime
+# MySQL only in practice: the installer offers mysqli and pgsql, but OpenCart's
+# own schema and every extension are written for MySQL. The engine also has to
+# put the mysqli driver in the image, which composer.json never asks for.
+database: mysql
+detect:
+  all:
+    - file: composer.json
+    # Matched against the repository root, because detection runs before any
+    # of this manifest's paths are known.
+    - path: upload/system/startup.php
+    - path: upload/admin/index.php
+    - path: upload/install/cli_install.php
+commands:
+  - id: writable-config
+    stage: [install, upgrade]
+    description: 'OpenCart''s installer writes the storefront and admin config.php itself, and refuses to start while either is missing or read-only -- the repository ships only an empty config-dist.php. Creating both empty and writable is what lets the installer''s database step run at all.'
+    run: 'touch /app/upload/config.php /app/upload/admin/config.php && chmod 664 /app/upload/config.php /app/upload/admin/config.php && mkdir -p /app/upload/system/storage/cache /app/upload/system/storage/logs /app/upload/system/storage/session /app/upload/system/storage/upload /app/upload/system/storage/download'

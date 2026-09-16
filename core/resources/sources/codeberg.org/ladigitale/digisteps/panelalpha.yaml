@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  Digisteps is a Vue 3 + Vite single-page application with a PHP backend in
+  inc/ (SQLite by default, no database server; composer.json exists only for
+  the optional aws/aws-sdk-php). Its build copies .env.production into the
+  bundle and fails without it, so the prepare hook writes a default one; the
+  PHP strategy then serves the built dist/ tree, which carries both the SPA,
+  the inc/ endpoints it calls and the vendor/ tree composer produced.
+extends: php
+docroot: dist

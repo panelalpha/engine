@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../_schema.json
+#
+# PHP handed to the browser as text instead of run.
+#
+# The document root is pointing at a directory the interpreter is not
+# configured for, or the application root was guessed wrong -- Laravel served
+# from its repository root rather than public/, phpBB from the checkout rather
+# than phpBB/. The response is a 200 carrying the program's own source, which
+# is both a broken site and every credential the file opens with.
+#
+# `<?php` in the first four kilobytes of `/` is the tell. A page that
+# deliberately shows PHP has escaped it to &lt;?php by the time a browser sees
+# it, so the raw form arriving intact means nothing parsed it.
+id: php-executes
+severity: error
+serving: php_source
+expect:
+  body_not:
+    - '<?php'
+message: 'The site is serving PHP source code instead of running it.'
+explain: php-docroot

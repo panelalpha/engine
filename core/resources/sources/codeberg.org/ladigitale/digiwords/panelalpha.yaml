@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  Digiwords is a Vue 3 + Vite single-page application with a small PHP
+  backend in inc/ (SQLite stored as inc/digiwords.db next to the copied
+  backend files, no database server; DB_DRIVER=mariadb/mysql is optional).
+  Its build copies .env.production into the bundle and fails without it,
+  so the prepare hook writes a default one; the PHP strategy then serves
+  the built dist/ tree, which carries both the SPA and the inc/ endpoints
+  it calls.
+id: ladigitale-spa-php
+extends: php-plain
+docroot: dist

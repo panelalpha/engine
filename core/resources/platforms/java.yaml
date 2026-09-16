@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=./_schema.json
+id: java
+label: 'Java (Maven)'
+priority: 740
+runtime: command
+port: 8080
+requires:
+  java: runtime
+detect:
+  file: pom.xml
+commands:
+  - id: maven-package
+    stage: build
+    run: 'mvn -B -DskipTests package'
+  - id: serve
+    stage: start
+    serve: true
+    run: 'java -jar target/*.jar'
+commands_from:
+  serve: java.start

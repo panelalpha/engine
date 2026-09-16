@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: adminer
+strategy: php
+label: Adminer
+priority: 934
+runtime: php
+port: 8000
+docroot: .
+# Adminer is not servable as it sits in the repository: there is no index.php
+# anywhere, and adminer/ holds .inc.php fragments rather than an entry point.
+# The shipped artefact is a single file that compile.php concatenates, which is
+# why the plain PHP platform reaches it, finds no document root and serves 403.
+env:
+  APP_ENV: production
+  LOG_CHANNEL: stderr
+requires:
+  php: runtime
+detect:
+  all:
+    - file: composer.json
+    - file: compile.php
+    - path: adminer/include/adminer.inc.php
+    - path: adminer/drivers/mysql.inc.php
+commands:
+  - id: compile
+    stage: build
+    description: 'compile.php inlines every driver, language and asset into one adminer.php -- the form Adminer is actually distributed and run in. It is renamed to index.php so the document root has an entry point; without it the build produces a file nobody can route to. Runs after the source is copied, which is the only point at which compile.php and adminer/ both exist.'
+    run: 'php compile.php && mv adminer.php index.php'

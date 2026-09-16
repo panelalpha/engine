@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: mantisbt
+strategy: php
+label: MantisBT
+priority: 936
+runtime: php
+port: 8000
+docroot: .
+# MantisBT boots from config/config_inc.php, which the repository does not ship
+# -- only config_inc.php.sample. Without it every request redirects to
+# admin/install.php, and the installer asks for database credentials the account
+# holder has no way of knowing.
+env:
+  APP_ENV: production
+  LOG_CHANNEL: stderr
+requires:
+  php: runtime
+# MySQL, PostgreSQL, SQL Server or Oracle; MantisBT ships none of them and its
+# composer.json declares no database extension either, so a plain PHP image
+# reaches the installer with no driver its "MySQL Improved" default can use.
+database: mysql
+detect:
+  all:
+    - file: composer.json
+    # ADOdb is MantisBT's database layer, and these two files are its own.
+    - composer: adodb/adodb-php
+    - path: admin/install.php
+    - path: core/database_api.php
+commands:
+  - id: write-config
+    stage: [install, upgrade]
+    description: 'Renders config/config_inc.php from the account''s own database credentials, plus the master salt MantisBT refuses to run without. The installer reads these as its form defaults, so the database step arrives filled in. Written on install and upgrade rather than at every start so an administrator''s later edits survive a restart, and never over a file that already exists.'
+    run: 'if [ ! -f /app/config/config_inc.php ]; then printf ''<?php\n$g_hostname = "%s";\n$g_db_username = "%s";\n$g_db_password = "%s";\n$g_database_name = "%s";\n$g_db_type = "mysqli";\n$g_crypto_master_salt = "%s";\n$g_default_timezone = "UTC";\n'' "${DB_HOST:-127.0.0.1}:${DB_PORT:-3306}" "${DB_USERNAME:-root}" "${DB_PASSWORD:-}" "${DB_DATABASE:-bugtracker}" "$(php -r ''echo bin2hex(random_bytes(16));'')" > /app/config/config_inc.php && chmod 640 /app/config/config_inc.php; fi'

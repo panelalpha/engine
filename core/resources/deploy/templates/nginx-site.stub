@@ -1,0 +1,36 @@
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html index.htm;
+
+    # A site with no build step is served straight out of ~/project, so the
+    # engine's own files sit in the document root next to it.
+    location ~ ^/(?:docker-compose\.ya?ml|panelalpha[-.]) {
+        deny all;
+    }
+
+    # A dotfile in the document root is never a page. The repository is the
+    # document root here, so /.git/config, /.git/index and /.env are one
+    # request away -- and .git/index alone is enough to reconstruct the
+    # source. ACME stays reachable: a prefix match beats the regex below.
+    location ^~ /.well-known/ {
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+    {{# entry }}
+
+    # This site's front page is not called index.html, so `/` has to be told
+    # which document it is. Only `/` -- every other path is still the file it
+    # names, because this is a site of pages and not a single-page app.
+    location = / {
+        try_files "/{{ entry }}" =404;
+    }
+    {{/ entry }}
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}

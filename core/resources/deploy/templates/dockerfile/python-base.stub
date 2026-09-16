@@ -1,0 +1,5 @@
+FROM {{ python_image }}
+LABEL panelalpha.base="python"
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends {{ packages }} \
+ && rm -rf /var/lib/apt/lists/*

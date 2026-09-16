@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=./_schema.json
+id: dockerfile
+label: Dockerfile
+priority: 970
+runtime: dockerfile
+port: 80
+detect:
+  probe: dockerfile
+commands: {  }

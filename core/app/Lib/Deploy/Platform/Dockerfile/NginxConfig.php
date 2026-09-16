@@ -1,0 +1,49 @@
+<?php
+
+namespace App\Lib\Deploy\Platform\Dockerfile;
+
+use App\Lib\Deploy\Template\Template;
+use App\Lib\Deploy\Template\TemplateLoader;
+
+/**
+ * The nginx configs the static recipes ship.
+ *
+ * Two, because "static" covers two things: a framework's build output is a
+ * single-page app, where every path that is not a file rewrites to index.html;
+ * a site of documents is the opposite, and rewriting a typo to the front page
+ * turns a 404 into a page that says the wrong thing.
+ */
+final class NginxConfig
+{
+    public const FILENAME = 'panelalpha.nginx.conf';
+
+    /**
+     * A path nginx can be handed inside double quotes: relative, no traversal,
+     * and none of the characters that would end the string. Spaces and
+     * parentheses are allowed -- `plan (1).html` is a real deployed filename.
+     */
+    private const SAFE_ENTRY = '/^(?!\/)(?!.*\.\.)[^\x00-\x1f"\'\\\\$;{}]+$/u';
+
+    /** The single-page-app config: same contents for every account. */
+    public static function contents(): string
+    {
+        return TemplateLoader::asset('nginx.conf');
+    }
+
+    /**
+     * `$entry` goes from the customer's repository into a config file, so
+     * anything not plainly a relative filename is dropped rather than escaped;
+     * nginx then serves index.html as before.
+     */
+    public static function site(?string $entry = null): string
+    {
+        return Template::named('nginx-site')->render(['entry' => self::safeEntry($entry)]);
+    }
+
+    private static function safeEntry(?string $entry): ?string
+    {
+        $entry = trim((string) $entry);
+
+        return $entry !== '' && preg_match(self::SAFE_ENTRY, $entry) === 1 ? $entry : null;
+    }
+}

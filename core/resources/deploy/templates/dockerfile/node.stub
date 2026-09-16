@@ -1,0 +1,11 @@
+FROM {{ image }}
+WORKDIR /app
+RUN {{ git_install }}
+{{ heap_env }}
+{{ install_layer }}
+{{ env }}
+{{# build_command }}
+RUN {{ build_command }}
+{{/ build_command }}
+EXPOSE {{ port }}
+{{ entrypoint }}

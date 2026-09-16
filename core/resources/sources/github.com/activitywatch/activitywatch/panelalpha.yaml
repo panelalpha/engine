@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  ActivityWatch is a self-hosted automated time tracker. The repository is a
+  git-submodule *bundle*, not an application: its root carries only the
+  Makefile that drives the submodules and a pyproject.toml that exists to
+  install the individual modules into one shared virtualenv, with
+  `package-mode = false` because it is an application bundle rather than a
+  distributable package. Nothing at the root is runnable — `main.py`,
+  `app.py` and the other entry points the Python recipe looks for are in the
+  `aw-*` submodules — so file detection reaches the right platform but cannot
+  work out a start command, and the deploy is refused as not deployable
+  before the build even begins.
+
+  The server that serves the web interface is `aw-server` (the Python
+  implementation; `aw-server-rust` is the planned successor and needs a Rust
+  nightly), and it serves the compiled `aw-webui` SPA out of its own
+  `aw_server/static/`. Neither is at the repository root, and the web UI has
+  to be compiled before the server can serve it, so the recipe ships a
+  Dockerfile of its own instead of trying to describe the bundle as a single
+  pip-installable project.
+
+  The Dockerfile builds the web UI in a Node stage and installs `aw-server`
+  into a Python image, which is what the project's own `make build` does in
+  two of its many steps. The webui's `vue.config.js` reads `git rev-parse
+  --short HEAD` at build time, so the Node stage installs `git` and seeds a
+  throwaway repository: the submodule arrives as a gitlink with no `.git` of
+  its own, and the build fails on `Command failed: git rev-parse` without it.
+  Only `aw-server` is installed and only its web UI is built — the bundle's
+  watchers and the tray-icon manager are desktop components and have nothing
+  to do on a server with no GUI. The server listens on 5600 (its own
+  default), which is the port the recipe publishes.
+extends: dockerfile
+strategy: dockerfile
+id: activitywatch
+label: ActivityWatch
+port: 5600
+extra:
+  # A source recipe is applied without running the probes
+  # (PlatformSelector::fromSource() calls describe() with no probe data), so
+  # the dockerfile probe's dockerfile/port_hint would be null/80 even though
+  # the recipe ships a Dockerfile — and the deployability check then fails
+  # with "Dockerfile strategy selected but Dockerfile is missing." State what
+  # the probe would have found until that path runs its probes too.
+  dockerfile: Dockerfile
+  port_hint: 5600
+env:
+  # aw-server binds 127.0.0.1 by default; the container has to answer on its
+  # published port, so the recipe's CMD passes --host 0.0.0.0 explicitly.
+  PYTHONUNBUFFERED: '1'

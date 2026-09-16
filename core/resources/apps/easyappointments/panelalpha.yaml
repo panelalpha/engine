@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: easyappointments
+strategy: php
+label: 'Easy!Appointments'
+priority: 933
+runtime: php
+port: 8000
+docroot: .
+# Easy!Appointments boots from a root config.php that the repository does not
+# ship -- only config-sample.php. Without it every request returns the same
+# plain-text line ("The root config.php file is missing"), which is a 200 and
+# therefore looks healthy to any probe that only reads the status code.
+env:
+  APP_ENV: production
+  LOG_CHANNEL: stderr
+requires:
+  php: runtime
+# CodeIgniter 3, MySQL only: no SQLite driver ships with the app and its
+# installer has no database step to type credentials into.
+database: mysql
+detect:
+  all:
+    - file: composer.json
+    - file: config-sample.php
+    - path: application/config/config.php
+    - path: system/core/CodeIgniter.php
+commands:
+  - id: write-config
+    stage: [install, upgrade]
+    description: 'Renders config.php from the account''s own database credentials. Written on install and upgrade rather than at every start so an administrator''s later edits to the file survive a restart, and never on start where it would overwrite them.'
+    run: 'php -r ''$c = file_get_contents("/app/config-sample.php"); $r = ["BASE_URL" => getenv("APP_URL") ?: "http://localhost", "DB_HOST" => getenv("DB_HOST") ?: "127.0.0.1", "DB_NAME" => getenv("DB_DATABASE") ?: "", "DB_USERNAME" => getenv("DB_USERNAME") ?: "", "DB_PASSWORD" => getenv("DB_PASSWORD") ?: ""]; foreach ($r as $k => $v) { $c = preg_replace("/const\s+" . $k . "\s*=\s*.*?;/", "const " . $k . " = " . var_export($v, true) . ";", $c, 1); } file_put_contents("/app/config.php", $c);'''

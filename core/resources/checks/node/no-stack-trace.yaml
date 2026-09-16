@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../_schema.json
+#
+# A Node error rendered into the page instead of logged.
+#
+# The case the baseline misses is the one that answers 200: a framework that
+# catches its own boot failure and renders it -- Next's error overlay is the
+# common one -- so the port answers and the deploy is green while every
+# visitor gets a stack trace.
+#
+# `Cannot find module` is the failure behind most of them: a dependency that
+# was in the build and is not in the runtime image, or a build output shipped
+# without the install that produced it.
+id: no-stack-trace
+severity: error
+serving: error_page
+expect:
+  body_not:
+    - 'Error: Cannot find module'
+    - 'ERR_MODULE_NOT_FOUND'
+    - 'at Module._compile ('
+message: 'The application answered with a Node stack trace.'
+fix: 'A missing module at runtime usually means the install stage and the start command disagree about where dependencies live.'

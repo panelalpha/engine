@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../_schema.json
+#
+# Rails Host Authorization blocking the domain.
+#
+# The same failure as Django's, at a 403 instead of a 400 and with a different
+# page. The engine already installs an initializer that adds the project's
+# host ({@see DeployStrategy::installRailsHostInitializer}), so this should
+# never fire -- which is the point of checking it. A guard that silently stops
+# working is worse than one that was never there, and this is the response
+# that says it did.
+id: rails-blocked-host
+severity: error
+serving: misconfigured_host
+when:
+  file: gemfile
+expect:
+  body_not:
+    - 'Blocked hosts'
+    - 'Blocked host:'
+message: 'Rails is blocking the domain this project is served on.'
+fix: 'The host initializer the engine installs is missing or was overwritten. Redeploy, or add the domain to config.hosts.'

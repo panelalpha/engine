@@ -1,0 +1,53 @@
+{
+  "name": "@panelalpha/engine-api-tests",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Playwright API test suite for the PanelAlpha Engine REST API.",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "test": "tsx scripts/run-tests.ts",
+    "test:smoke": "tsx scripts/run-tests.ts --project=api --grep @smoke",
+    "test:slow": "tsx scripts/run-tests.ts --project=slow",
+    "test:unit": "playwright test --project=unit",
+    "test:setup": "playwright test --project=setup",
+    "test:cli": "tsx scripts/run-tests.ts --project=cli",
+    "test:deploy": "tsx scripts/run-tests.ts --project=setup-dind --project=deploy",
+    "test:webserver-change": "playwright test --project=webserver-change",
+    "test:update": "playwright test --project=update",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "env:setup": "tsx scripts/setup-env.ts",
+    "report": "tsx scripts/show-report.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{ts,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,json,md,yml,yaml}\"",
+    "check": "npm run typecheck && npm run lint && npm run format:check",
+    "fix": "npm run lint:fix && npm run format"
+  },
+  "dependencies": {
+    "basic-ftp": "^5.0.5",
+    "ssh2-sftp-client": "^12.0.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@faker-js/faker": "^9.9.0",
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^24.10.1",
+    "@types/ssh2-sftp-client": "^9.0.5",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "dotenv": "^17.2.4",
+    "eslint": "^9.39.0",
+    "eslint-config-prettier": "^10.1.8",
+    "jiti": "^2.7.0",
+    "prettier": "^3.9.6",
+    "tsx": "^4.23.12",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript-eslint": "^8.67.0",
+    "zod": "^4.4.3"
+  }
+}

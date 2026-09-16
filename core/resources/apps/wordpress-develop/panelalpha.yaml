@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: wordpress-develop
+strategy: php
+label: WordPress (develop checkout)
+priority: 982
+runtime: php
+port: 8000
+docroot: .
+# The application is build/, not src/ and not the checkout root.
+#
+# src/ is the source tree and it refuses to serve: `src/index.php` checks for
+# the compiled assets and, not finding them, wp_die()s with "You are running
+# WordPress without JavaScript and CSS files. These need to be built." Every
+# other entry point boots normally, so the symptom is a site whose admin and
+# installer work while every front-controller request answers 500.
+#
+# `npm run build` -- which this deploy already runs, and which is the longest
+# step in it -- writes the finished tree to build/: WordPress plus the
+# minified JavaScript and CSS, which is what upstream's own LOCAL_DIR=build
+# selects for a production run. Pointing at src/ threw that work away.
+app_root: build
+# Priority 982 puts this above the compose platform (980), which is not the
+# usual arrangement for an application manifest. wordpress-develop ships a
+# docker-compose.yml, so compose wins on any repository this matches and the
+# stack it brings up is a contributor environment, not a site: five services,
+# memcached and mysql published to the host, and an nginx pointed at a src/
+# that has no wp-config.php in it. Deployed that way it answers 500 on every
+# request, because the three npm scripts that would make it a site --
+# env:install writes wp-config.php and runs wp core install -- are declared in
+# package.json and run by nothing.
+database: mysql
+env:
+  APP_ENV: production
+  LOG_CHANNEL: stderr
+requires:
+  php: runtime
+# Matched against the repository root, because detection runs before app_root
+# is known -- and build/ does not exist yet at that point either; the build
+# stage creates it before the container starts. Gruntfile.js is what separates
+# this from the distribution tree: the checkout has one and a released
+# WordPress never does.
+detect:
+  all:
+    - path: src/wp-settings.php
+    - path: src/wp-includes/version.php
+    - path: Gruntfile.js
+    - path: package.json
+commands:
+  - id: wp-config
+    stage: [install, upgrade]
+    description: 'WordPress ships no wp-config.php and calls wp_die() without one, which is a 500 before anything else can go wrong -- so the file has to exist before the first request. Written once and never overwritten, so a site that has been configured by hand keeps its own file. The credentials are read from the environment rather than baked in, so rotating the account''s MySQL password does not strand the site, and no secret is written to disk. WP_HOME/WP_SITEURL come from APP_URL so WordPress does not canonicalise visitors into a redirect loop, and X-Forwarded-Proto is honoured because TLS is terminated at the proxy, not in the container. The salts are derived rather than random because `npm run build` empties build/ on every redeploy, taking this file with it: random ones would be new each time and log every user out. Deriving them from the account''s own database password keeps them stable across rebuilds and different between accounts.'
+    run: 'test -f /app/wp-config.php || { printf ''<?php\n/* Written by PanelAlpha on first deploy. Edit freely; it is never overwritten. */\ndefine("DB_NAME", getenv("DB_DATABASE"));\ndefine("DB_USER", getenv("DB_USERNAME"));\ndefine("DB_PASSWORD", getenv("DB_PASSWORD"));\ndefine("DB_HOST", getenv("DB_HOST") . ":" . (getenv("DB_PORT") ?: "3306"));\ndefine("DB_CHARSET", "utf8mb4");\ndefine("DB_COLLATE", "");\n''; for k in AUTH_KEY SECURE_AUTH_KEY LOGGED_IN_KEY NONCE_KEY AUTH_SALT SECURE_AUTH_SALT LOGGED_IN_SALT NONCE_SALT; do printf ''define("%s", "%s");\n'' "$k" "$(printf "%s" "${DB_PASSWORD}${k}panelalpha-wp-salt" | sha256sum | cut -d" " -f1)"; done; printf ''$table_prefix = "wp_";\ndefine("WP_DEBUG", false);\nif (getenv("APP_URL")) { define("WP_HOME", getenv("APP_URL")); define("WP_SITEURL", getenv("APP_URL")); }\nif ((isset($_SERVER["HTTP_X_FORWARDED_PROTO"]) ? $_SERVER["HTTP_X_FORWARDED_PROTO"] : "") === "https") { $_SERVER["HTTPS"] = "on"; }\nif (!defined("ABSPATH")) { define("ABSPATH", __DIR__ . "/"); }\nrequire_once ABSPATH . "wp-settings.php";\n''; } > /app/wp-config.php'

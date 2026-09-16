@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=./_schema.json
+id: dotnet
+label: .NET
+priority: 744
+runtime: command
+# ASP.NET Core's own default is 8080 in the container images, and Kestrel binds
+# whatever ASPNETCORE_URLS says -- which is the only thing that matters, since
+# 127.0.0.1 is the default and nothing outside the container could reach it.
+port: 8080
+requires:
+  dotnet: runtime
+# The SDK compiles; the aspnet runtime runs. Shipping the SDK plus the whole
+# cloned source tree plus the published output cost 294s of layer export
+# against 63s of actual compile on Jellyfin -- the export, not the build, was
+# the dominant cost of every .NET deploy. `{version}` is filled in from the
+# same requirement that chose the build image, so the two cannot drift.
+runtime_image: 'mcr.microsoft.com/dotnet/aspnet:{version}'
+output_directory: out
+env:
+  ASPNETCORE_URLS: 'http://0.0.0.0:8080'
+  # A build that stops to ask about telemetry or print a first-run banner is a
+  # build that has already failed on a machine with nobody at the keyboard.
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1'
+detect:
+  probe: dotnet-project
+commands:
+  - id: dotnet-publish
+    stage: build
+    role: dependencies
+    run: 'dotnet publish -c Release -o out --nologo -p:UseAppHost=false'
+  - id: serve
+    stage: start
+    serve: true
+    run: 'exec dotnet out/app.dll'
+commands_from:
+  dotnet-publish: dotnet.build
+  serve: dotnet.start

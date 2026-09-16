@@ -1,0 +1,25 @@
+---
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  Digibuzzer is a collaborative buzzer game room: a vike (Vite 8) single-page-plus-server
+  application whose Express 5 server renders the Vue pages server-side, serves socket.io
+  rooms and keeps sessions and rate limits in Redis. The compose file it ships is a
+  workstation/production stack — the app service is built from the repository Dockerfile
+  and traefik fronts it with its own Let's Encrypt — so the compose probe rejects it and
+  detection builds the repository's own Dockerfile instead. Unlike Digiboard's compose,
+  its app service neither bind-mounts the repo nor passes host uid build args, so the
+  file does not read as a local-dev stack and the engine's runtime-services reader skips
+  it — which is why this directory ships the redis service as a compose override instead
+  of relying on the engine reading it out of the repository's file. The repository's
+  docker-compose.override.yml must still be stashed: it pins DOMAIN to
+  http://localhost:3000 and re-gates traefik, and ProjectPaths merges any surviving
+  override over the compose file the engine generates.
+extends: dockerfile
+env:
+  # The repository's own app service declares these beside the redis sidecar;
+  # the generated compose carries them the same way. The redis host is the
+  # sidecar name the override layers in; account env_vars outrank all of it.
+  DB_HOST: redis
+  DB_PORT: '6379'
+  REVERSE_PROXY: '0'
+  NODE_CLUSTER: '0'

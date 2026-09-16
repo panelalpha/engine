@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../_schema.json
+#
+# Django refusing the domain it is being served on.
+#
+# ALLOWED_HOSTS is empty or does not list the name the proxy sends, so Django
+# rejects every request with a 400 -- which is under the server-error
+# threshold, so the port probe passes it, the reachability comparison passes
+# it, and the deploy is green. It is the first thing a Django project does
+# after a successful deploy, and the site is unusable from the first request.
+#
+# Guarded on manage.py: everything in this group runs a process the manifest
+# started, and only the Django ones can produce this page.
+id: django-allowed-hosts
+severity: error
+serving: misconfigured_host
+when:
+  file: manage.py
+expect:
+  body_not:
+    - 'Invalid HTTP_HOST header'
+    - 'DisallowedHost'
+message: 'Django is rejecting the domain this project is served on.'
+fix: 'Add the project domain to ALLOWED_HOSTS in the Django settings, or set it from an environment variable.'

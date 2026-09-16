@@ -1,0 +1,152 @@
+import { createServer } from 'node:http'
+import { createReadStream, existsSync, statSync } from 'node:fs'
+import { extname, join, normalize, relative, resolve, sep } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { spawn } from 'node:child_process'
+
+const ROOT = process.cwd()
+const PORT = Number(process.env.PORT || process.env.NITRO_PORT || 3000)
+const HOST = process.env.HOST || process.env.NITRO_HOST || '0.0.0.0'
+
+const ENTRIES = {{ entries }}
+
+const ASSETS = ['dist/client', '.output/public', 'dist/public']
+
+const MIME = {
+  '.css': 'text/css; charset=utf-8',
+  '.gif': 'image/gif',
+  '.html': 'text/html; charset=utf-8',
+  '.ico': 'image/x-icon',
+  '.jpeg': 'image/jpeg',
+  '.jpg': 'image/jpeg',
+  '.js': 'text/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.txt': 'text/plain; charset=utf-8',
+  '.wasm': 'application/wasm',
+  '.webp': 'image/webp',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+}
+
+function firstExisting(paths) {
+  for (const rel of paths) {
+    const abs = resolve(ROOT, rel)
+    if (existsSync(abs)) {
+      return { rel: rel.replace(/\\/g, '/'), abs }
+    }
+  }
+  return null
+}
+
+function incomingToRequest(req) {
+  const host = req.headers.host || '127.0.0.1'
+  const headers = new Headers()
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (value == null) continue
+    headers.set(key, Array.isArray(value) ? value.join(', ') : String(value))
+  }
+  const method = req.method || 'GET'
+  const hasBody = method !== 'GET' && method !== 'HEAD'
+  return new Request(`http://${host}${req.url}`, {
+    method,
+    headers,
+    body: hasBody ? req : undefined,
+    duplex: hasBody ? 'half' : undefined,
+  })
+}
+
+async function writeResponse(res, response) {
+  const headers = {}
+  response.headers.forEach((value, key) => {
+    headers[key] = value
+  })
+  res.writeHead(response.status, headers)
+  if (response.body == null) {
+    res.end()
+    return
+  }
+  const buf = Buffer.from(await response.arrayBuffer())
+  res.end(buf)
+}
+
+function safeAsset(root, urlPath) {
+  const decoded = decodeURIComponent((urlPath.split('?')[0] || '/'))
+  const abs = normalize(join(root, decoded))
+  const rel = relative(root, abs)
+  if (rel.startsWith('..') || rel.startsWith(sep) || rel.includes(`..${sep}`)) {
+    return null
+  }
+  return abs
+}
+
+function tryStatic(res, assetsRoot, urlPath) {
+  if (assetsRoot == null) {
+    return false
+  }
+  let file = safeAsset(assetsRoot, urlPath)
+  if (file == null) {
+    return false
+  }
+  try {
+    const st = statSync(file)
+    if (st.isDirectory()) {
+      file = join(file, 'index.html')
+    }
+    if (!existsSync(file) || !statSync(file).isFile()) {
+      return false
+    }
+  } catch {
+    return false
+  }
+  res.writeHead(200, { 'content-type': MIME[extname(file).toLowerCase()] || 'application/octet-stream' })
+  createReadStream(file).pipe(res)
+  return true
+}
+
+const entry = firstExisting(ENTRIES)
+if (entry == null) {
+  console.error('No server build found. Looked for: ' + ENTRIES.join(', '))
+  process.exit(1)
+}
+
+// Self-contained servers under .output/ listen when executed as main. import() would skip that.
+if (entry.rel.startsWith('.output/')) {
+  const child = spawn(process.execPath, [entry.abs], { stdio: 'inherit', env: process.env })
+  child.on('exit', (code, signal) => {
+    if (signal) {
+      process.kill(process.pid, signal)
+      return
+    }
+    process.exit(code ?? 1)
+  })
+} else {
+  const mod = await import(pathToFileURL(entry.abs).href)
+  const fetchHandler =
+    (typeof mod.fetch === 'function' && mod.fetch)
+    || (mod.default && typeof mod.default.fetch === 'function' && mod.default.fetch)
+    || (typeof mod.default === 'function' ? mod.default : null)
+  if (typeof fetchHandler !== 'function') {
+    console.error(entry.rel + ' has no fetch() export and is not a listening .output server')
+    process.exit(1)
+  }
+  const assets = firstExisting(ASSETS)
+  createServer(async (req, res) => {
+    try {
+      if (tryStatic(res, assets && assets.abs, req.url || '/')) {
+        return
+      }
+      await writeResponse(res, await fetchHandler(incomingToRequest(req)))
+    } catch (err) {
+      console.error(err)
+      if (!res.headersSent) {
+        res.writeHead(500)
+      }
+      res.end()
+    }
+  }).listen(PORT, HOST, () => {
+    console.log('Listening on ' + HOST + ':' + PORT + ' (' + entry.rel + ')')
+  })
+}

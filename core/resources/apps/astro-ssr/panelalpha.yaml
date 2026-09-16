@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: astro-ssr
+strategy: astro
+label: 'Astro (SSR)'
+priority: 902
+runtime: node
+port: 4321
+output_directory: dist
+requires:
+  node: runtime
+detect:
+  all:
+    - any:
+        -
+          glob: astro.config
+        -
+          dep: astro
+    - probe: astro-ssr
+commands:
+  - id: npm-install
+    stage: build
+    role: dependencies
+    run: '{{js.install}}'
+    description: "Resolved from the project's lockfile — npm ci, pnpm install --frozen-lockfile, yarn or bun."
+  - id: astro-build
+    stage: build
+    run: '{{js.build:npx astro build}}'
+    description: "The project's own build script wins over this default when package.json defines one."
+  - id: serve
+    stage: start
+    serve: true
+    run: '{{js.start:node ./dist/server/entry.mjs}}'
+    description: "The project's own start script wins over this default when package.json defines one."

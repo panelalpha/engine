@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="152" viewBox="0 0 880 152" role="img" aria-labelledby="title desc">
+  <title id="title">Talk to us on Discord</title>
+  <desc id="desc">The main place to reach the PanelAlpha team</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5865F2"/>
+      <stop offset="100%" stop-color="#404EED"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="880" height="152" rx="20" fill="url(#bg)"/>
+  <circle cx="810" cy="8" r="88" fill="#ffffff" fill-opacity="0.07"/>
+  <circle cx="40" cy="150" r="64" fill="#000000" fill-opacity="0.08"/>
+
+  <rect x="28" y="40" width="72" height="72" rx="18" fill="#ffffff" fill-opacity="0.14"/>
+  <g transform="translate(41.3, 58) scale(0.373)">
+    <path fill="#ffffff" d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
+  </g>
+
+  <text x="120" y="72" fill="#ffffff" font-family="Liberation Sans" font-size="28" font-weight="700">Talk to us on Discord</text>
+  <text x="120" y="104" fill="#D8DCFC" font-family="Liberation Sans" font-size="16">The main place to reach the PanelAlpha team</text>
+
+  <rect x="668" y="52" width="184" height="48" rx="24" fill="#ffffff"/>
+  <text x="760" y="82" text-anchor="middle" fill="#5865F2" font-family="Liberation Sans" font-size="17" font-weight="700">Join Discord</text>
+</svg>

@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: flarum
+strategy: php
+label: Flarum
+priority: 938
+runtime: php
+port: 8000
+docroot: public
+# Everything else about Flarum the generic PHP platform already gets right:
+# public/ is the document root, storage/ is writable because the tree belongs to
+# www-data, and its own installer is what should greet the first visitor. The
+# one thing it cannot supply is a database -- Flarum's skeleton composer.json
+# declares no extension and no server, and its installer opens on a form asking
+# for credentials that would not exist.
+env:
+  APP_ENV: production
+  LOG_CHANNEL: stderr
+requires:
+  php: runtime
+# MySQL or MariaDB. Flarum supports nothing else: its installer offers a single
+# driver, and the schema is written for it.
+database: mysql
+detect:
+  all:
+    - file: composer.json
+    # The skeleton every Flarum site is forked from: flarum/core in require,
+    # the `flarum` console binary at the root, public/ as the document root.
+    - composer: flarum/core
+    - file: flarum
+    - path: public/index.php
+commands:

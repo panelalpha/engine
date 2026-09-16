@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  Kimai — Symfony time tracking — built from the repository's own multi-stage
+  Dockerfile, whose base variant is chosen by the `BASE` build arg rather than
+  by a build target: `FROM ${BASE}-base` is what the extension, composer and
+  final stages all read, and `--target apache` is a stage that never runs
+  composer, so it holds no /opt/kimai to run. Passing `BASE=apache` builds the
+  one image the hosting proxy can front — `php:8.3-apache-bookworm`, port 8001,
+  `curl -f http://127.0.0.1:8001` as its own healthcheck — where the file's
+  default target is the FPM variant on port 9000, which speaks FastCGI and not
+  HTTP at all.
+
+  Kimai's entrypoint refuses to start without DATABASE_URL and blocks in a
+  retry loop until it reaches a database, so the recipe declares `database:
+  mysql` for the account's own server and passes the credentials in that URL.
+  The database is reachable from the account's nested Docker by the
+  engine-managed name, which resolves on the host but not inside the account;
+  the prepare hook pins it into the checkout's `/etc/hosts` via a compose
+  `extra_hosts` layer, the same way the PHP strategy does for Matomo.
+
+  APP_SECRET is generated per account rather than left empty — the entrypoint
+  only invents one when the value is blank, persisting it into the `var` volume
+  it declares — and TRUSTED_HOSTS is left to the deploy's public URL so
+  Symfony answers under the name a visitor actually typed. The repository
+  commits its built frontend to `public/build/`, so nothing here needs Node.
+id: kimai
+extends: dockerfile
+strategy: dockerfile
+runtime: dockerfile
+label: Kimai
+port: 8001
+build_args:
+  BASE: apache
+database: mysql
+env:
+  # Kimai reads APP_ENV as prod/dev, not Symfony's `production`, and its own
+  # `.env.dist` ships `prod`. Stated here so a deploy that never gets as far
+  # as the image's own ENV still has it.
+  APP_ENV: prod

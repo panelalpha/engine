@@ -1,0 +1,5 @@
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  Chatwoot from its own docker-compose.production.yaml, copied into place by
+  the prepare hook along with generated credentials and a db:chatwoot_prepare
+  run. User management goes through rails runner.

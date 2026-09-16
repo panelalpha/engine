@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  Digistorm is a vike (vite-plugin-ssr) single-page-plus-server application:
+  an Express 5 server renders the Vue pages server-side, keeps every
+  survey/quiz/brainstorm in Redis, and serves uploads from the filesystem or
+  S3. Its Dockerfile is self-sufficient (installs the python3/make/g++ the
+  native eiows/bcrypt/sharp modules need) and its redis sidecar comes from the
+  compose file the engine reads for runtime services. The repository's own
+  docker-compose.override.yml must be stashed: it gates traefik behind a
+  profile while app still depends_on it, which merges into a dangling
+  dependency compose refuses.
+extends: dockerfile

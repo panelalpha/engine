@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: matomo
+strategy: php
+label: Matomo
+priority: 935
+runtime: php
+port: 8000
+docroot: .
+# Matomo is MySQL or nothing -- it has no SQLite driver -- and it has no .env
+# and no compose file to say so. Without this it reached its own installer and
+# stopped at the database step with nothing to type in.
+database: mysql
+env:
+  APP_ENV: production
+  LOG_CHANNEL: stderr
+requires:
+  php: runtime
+detect:
+  all:
+    - file: composer.json
+    - path: matomo.php
+    - path: piwik.php
+    - path: core/Version.php
+commands:
+  - id: composer-install
+    stage: build
+    role: dependencies
+    run: 'composer install --no-dev --no-interaction --no-scripts --no-plugins --optimize-autoloader'
+  - id: database-env
+    stage: start
+    description: 'Matomo''s installer reads its database defaults from MATOMO_DATABASE_* -- the same variables its own Docker image uses -- so the account''s credentials arrive prefilled and nobody has to be told what they are. Exported into the entrypoint''s own shell, which is the one Apache inherits.'
+    run: 'MATOMO_DATABASE_HOST="$DB_HOST"; MATOMO_DATABASE_PORT="$DB_PORT"; MATOMO_DATABASE_USERNAME="$DB_USERNAME"; MATOMO_DATABASE_PASSWORD="$DB_PASSWORD"; MATOMO_DATABASE_DBNAME="$DB_DATABASE"; export MATOMO_DATABASE_HOST MATOMO_DATABASE_PORT MATOMO_DATABASE_USERNAME MATOMO_DATABASE_PASSWORD MATOMO_DATABASE_DBNAME'
+  - id: restore-config
+    stage: upgrade
+    description: 'Matomo records the database it chose in config/config.ini.php, a file that lives in the container and not in the image, so a rebuilt container has an installed database and no idea it is installed -- it would show the wizard over a site full of data. Writing the section back points it at its own tables again. Upgrade only: on a first deploy there is nothing installed to point at, and the installer is what should run. Never overwrites a config Matomo already wrote.'
+    run: 'if ! grep -q "^\[database\]" /app/config/config.ini.php 2>/dev/null; then printf "; <?php exit; ?> DO NOT REMOVE THIS LINE\n[database]\nhost = \"%s\"\nport = \"%s\"\nusername = \"%s\"\npassword = \"%s\"\ndbname = \"%s\"\ntables_prefix = \"matomo_\"\n\n[General]\ntrusted_hosts[] = \"%s\"\n" "$DB_HOST" "$DB_PORT" "$DB_USERNAME" "$DB_PASSWORD" "$DB_DATABASE" "${APP_URL#*://}" > /app/config/config.ini.php; fi'

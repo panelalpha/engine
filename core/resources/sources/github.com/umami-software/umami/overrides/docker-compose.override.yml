@@ -1,0 +1,10 @@
+services:
+  umami:
+    environment:
+      APP_SECRET: ${APP_SECRET}
+      DATABASE_URL: ${DATABASE_URL}
+    volumes:
+      - ./docker:/app/docker
+  db:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}

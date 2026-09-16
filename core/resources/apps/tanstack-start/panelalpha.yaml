@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: tanstack-start
+label: 'TanStack Start'
+priority: 896
+runtime: node
+port: 3000
+output_directory: .output
+env:
+  NITRO_PRESET: node-server
+  NITRO_HOST: 0.0.0.0
+  NITRO_PORT: '3000'
+requires:
+  node: runtime
+detect:
+  dep:
+    - '@tanstack/react-start'
+    - '@tanstack/start'
+commands:
+  - id: npm-install
+    stage: build
+    role: dependencies
+    run: '{{js.install}}'
+    description: "Resolved from the project's lockfile — npm ci, pnpm install --frozen-lockfile, yarn or bun."
+  - id: vite-build
+    stage: build
+    run: '{{js.build:npx vite build}}'
+    description: "The project's own build script wins over this default when package.json defines one."
+  - id: serve
+    stage: start
+    serve: true
+    run: '{{js.start:node panelalpha.serve.mjs}}'
+    description: 'panelalpha.serve.mjs is the Nitro entry shim the engine writes into the project; StandaloneNodeServe::FILENAME is the source of that name.'

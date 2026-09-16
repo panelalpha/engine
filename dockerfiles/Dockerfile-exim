@@ -1,0 +1,16 @@
+FROM debian:trixie-slim
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y exim4 && \
+    apt-get clean
+
+# RUN DEBIAN_FRONTEND=noninteractive apt-get install procps htop nano iputils-ping net-tools curl netcat-traditional -y
+
+COPY <<EOF /docker-entrypoint.sh
+#!/bin/bash
+set -e
+service exim4 start
+tail -f /dev/null
+EOF
+RUN chmod +x /docker-entrypoint.sh
+ENTRYPOINT ["/docker-entrypoint.sh"]

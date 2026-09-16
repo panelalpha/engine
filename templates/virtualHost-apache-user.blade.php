@@ -1,0 +1,45 @@
+<VirtualHost *:80>
+    ServerName {{ $domain }}
+    @if (!empty($aliases))
+        ServerAlias {{ implode(' ', $aliases) }}
+    @endif
+    ServerAdmin webmaster@localhost
+    DocumentRoot /var/www{{ $relative_document_root }}
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
+    <Directory /var/www{{ $relative_document_root }}>
+        DirectoryIndex index.php index.html
+        Options -Indexes +FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+    <FilesMatch "\.php$">
+        SetHandler "proxy:unix:/run/php/php{{ $php_version }}-fpm.sock|fcgi://localhost"
+    </FilesMatch>
+</VirtualHost>
+@if (!empty($ssl_enabled))
+    <VirtualHost *:443>
+        ServerName {{ $domain }}
+        @if (!empty($aliases))
+            ServerAlias {{ implode(' ', $aliases) }}
+        @endif
+        ServerAdmin webmaster@localhost
+        DocumentRoot /var/www{{ $relative_document_root }}
+        ErrorLog ${APACHE_LOG_DIR}/error.log
+        CustomLog ${APACHE_LOG_DIR}/access.log combined
+        SSLEngine on
+        SSLVerifyClient none
+        SSLCertificateFile {{ $ssl_cert_file }}
+        SSLCertificateKeyFile {{ $ssl_cert_key_file }}
+        SSLCertificateChainFile {{ $ssl_cert_ca_file }}
+        <Directory /var/www{{ $relative_document_root }}>
+            DirectoryIndex index.php index.html
+            Options -Indexes +FollowSymLinks
+            AllowOverride All
+            Require all granted
+        </Directory>
+        <FilesMatch "\.php$">
+            SetHandler "proxy:unix:/run/php/php{{ $php_version }}-fpm.sock|fcgi://localhost"
+        </FilesMatch>
+    </VirtualHost>
+@endif

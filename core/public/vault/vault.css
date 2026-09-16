@@ -1,0 +1,347 @@
+/*
+ * The vault pages. Values are the design reference's (secret-pages kit), not
+ * restyled: #0A0A0B page, #FB7444 action, #FFB27A links and step numbers.
+ *
+ * Served from public/vault/ and not built through Vite: the customer reaching
+ * these pages has no session, and a missing `public/build` must not break them.
+ */
+
+/* Must precede every rule below: CSS drops an @import that follows a rule. */
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap");
+
+:root {
+    --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --ink: #0A0A0B;
+    --paper: #FFFFFF;
+    --body: #D8D8DC;
+    --quiet: #ABABB2;
+    --faint: #8C8C94;
+    --accent: #FB7444;
+    --accent-soft: #FFB27A;
+    --ok: #2BDA7C;
+    --danger: #FF7A7A;
+
+    --line: rgba(255, 255, 255, .10);
+    --line-field: rgba(255, 255, 255, .14);
+    --surface: rgba(255, 255, 255, .04);
+    --ease: cubic-bezier(.22, .61, .36, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--body);
+    font: 400 15px/1.6 var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+}
+
+.page {
+    position: relative;
+    overflow: hidden;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 72px 24px 48px;
+}
+
+.glow {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(90% 55% at 50% -12%, rgba(251, 116, 68, .22) 0%, rgba(251, 116, 68, .08) 45%, rgba(251, 116, 68, 0) 80%);
+}
+
+.wordmark {
+    position: relative;
+    height: 44px;
+    width: auto;
+    margin-bottom: 40px;
+}
+
+/* card */
+
+.card {
+    position: relative;
+    width: 100%;
+    max-width: 560px;
+    padding: 32px;
+    border-radius: 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.title {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font: 700 24px/1.2 var(--font-sans);
+    letter-spacing: -.02em;
+    color: var(--paper);
+}
+
+.title .tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: var(--paper);
+    flex-shrink: 0;
+}
+
+.title .tile span {
+    display: block;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+
+.lede {
+    margin: 0;
+    font: 400 15px/1.6 var(--font-sans);
+    color: var(--body);
+    text-wrap: pretty;
+}
+
+.field-label,
+.steps-title {
+    font: 600 15px/1.2 var(--font-sans);
+    color: var(--paper);
+}
+
+/* provider select (git token only) */
+
+/* The form is a card child: it has to lay out like one, or the button stops
+   being a flex item and the 20px rhythm is lost. */
+form { display: flex; flex-direction: column; gap: 20px; }
+
+.field { display: flex; flex-direction: column; gap: 8px; }
+
+.select-wrap { position: relative; width: 260px; }
+
+.select-wrap .provider-icon {
+    position: absolute;
+    left: 14px;
+    top: 0;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+}
+
+.select-wrap .provider-icon span {
+    display: block;
+    width: 20px;
+    height: 20px;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+
+.select-wrap .chevron {
+    position: absolute;
+    right: 12px;
+    top: 0;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+    color: var(--faint);
+}
+
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    height: 48px;
+    padding: 0 40px 0 44px;
+    border-radius: 10px;
+    background: #000;
+    border: 1px solid var(--line-field);
+    color: var(--paper);
+    font: 500 14px/1 var(--font-sans);
+    outline: none;
+    cursor: pointer;
+}
+
+select:focus-visible,
+textarea:focus-visible,
+.button:focus-visible {
+    border-color: transparent;
+    outline: 2px solid var(--accent-soft);
+    outline-offset: 2px;
+}
+
+/* steps */
+
+.steps { display: flex; flex-direction: column; gap: 12px; }
+
+.steps ol {
+    margin: 0;
+    padding: 0 0 0 8px;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font: 400 15px/1.55 var(--font-sans);
+    color: var(--body);
+}
+
+.steps ol > li {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 6px;
+    align-items: start;
+}
+
+.steps ol > li > .n {
+    font: 700 15px/1.55 var(--font-sans);
+    color: var(--accent-soft);
+}
+
+.steps ul {
+    margin: 6px 0 0;
+    padding: 0 0 0 4px;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.steps ul > li {
+    display: grid;
+    grid-template-columns: 14px minmax(0, 1fr);
+    gap: 8px;
+    font: 400 14px/1.5 var(--font-sans);
+    color: var(--body);
+}
+
+.steps ul > li > .dash { color: var(--faint); }
+
+.steps strong { font-weight: 600; color: var(--paper); }
+
+.steps a {
+    color: var(--accent-soft);
+    margin-left: 3px;
+    text-decoration: underline;
+    text-decoration-color: var(--accent-soft);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+    transition: text-decoration-color 180ms var(--ease), filter 180ms var(--ease);
+}
+
+.steps a:hover { text-decoration-color: transparent; filter: brightness(1.18); }
+
+.steps p {
+    margin: 4px 0 0;
+    font: 400 14px/1.55 var(--font-sans);
+    color: var(--quiet);
+}
+
+.steps code {
+    font: 500 13px/1 var(--font-mono);
+    color: var(--paper);
+}
+
+/* the secret field */
+
+textarea {
+    width: 100%;
+    min-height: 110px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: #000;
+    border: 1px solid var(--line-field);
+    color: var(--paper);
+    font: 400 14px/1.5 var(--font-mono);
+    outline: none;
+    resize: vertical;
+}
+
+textarea::placeholder { color: #6B6B72; }
+
+.hint {
+    font: 400 13px/1.5 var(--font-sans);
+    color: var(--faint);
+}
+
+.button {
+    display: inline-flex;
+    align-self: center;
+    align-items: center;
+    justify-content: center;
+    height: 48px;
+    width: 180px;
+    margin-top: 4px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--accent);
+    color: var(--paper);
+    cursor: pointer;
+    font: 700 14px/1 var(--font-sans);
+    transition: filter 180ms var(--ease);
+}
+
+.button:hover { filter: brightness(1.12); }
+
+/* notices */
+
+.notice {
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, .05);
+    color: var(--body);
+    font: 400 14px/1.5 var(--font-sans);
+}
+
+.notice.error {
+    background: rgba(255, 122, 122, .10);
+    color: var(--danger);
+}
+
+/* success */
+
+.card.done {
+    padding: 40px 32px;
+    align-items: center;
+    gap: 18px;
+    text-align: center;
+}
+
+.card.done .check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--ok);
+    color: var(--ink);
+}
+
+.card.done p { max-width: 420px; text-wrap: pretty; }
+
+.card.done h1 {
+    margin: 0;
+    font: 700 24px/1.2 var(--font-sans);
+    letter-spacing: -.02em;
+    color: var(--paper);
+}
+
+@media (max-width: 480px) {
+    .page { padding: 48px 16px 32px; }
+    .card { padding: 24px; }
+    .select-wrap { width: 100%; }
+    .button { width: 100%; }
+}

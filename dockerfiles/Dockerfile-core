@@ -1,0 +1,127 @@
+FROM debian:trixie-slim AS php_prod
+
+ADD ./ioncube/ioncube_loader_lin_8.3.so.tar.gz /tmp/
+
+RUN apt-get update -y \
+    && apt-get install -y \
+        lsb-release \
+        zip \
+        libzip-dev \
+        wget \
+        lftp \
+        libmagickwand-dev \
+        libssh2-1-dev \
+        libssh2-1 \
+        awstats \
+        wget \
+        curl \
+        git \
+        rsync \
+    && wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg \
+    && echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" >/etc/apt/sources.list.d/php.list \
+    && apt-get update -y \
+    && apt-get install -y \
+        php8.3 \
+        php8.3-cli \
+        php8.3-ftp \
+        php8.3-mysql \
+        php8.3-opcache \
+        php8.3-pdo \
+        php8.3-zip \
+        php8.3-redis \
+        php8.3-imagick \
+        php8.3-ssh2 \
+        php8.3-curl \
+        php8.3-xml \
+        php8.3-mbstring \
+        php8.3-sqlite3 \
+    && mkdir -p /etc/php/ext/ioncube/ \
+    && mv /tmp/ioncube_loader_lin_8.3.so /etc/php/ext/ioncube/ \
+    && echo 'zend_extension = /etc/php/ext/ioncube/ioncube_loader_lin_8.3.so' > /etc/php/8.3/cli/conf.d/00-ioncube.ini \
+    && sed -i "s/dc_eximconfig_configtype='local'/dc_eximconfig_configtype='internet'/" /etc/exim4/update-exim4.conf.conf \
+    && update-exim4.conf
+
+# install docker
+RUN apt-get install -y gnupg
+RUN mkdir -p /etc/apt/keyrings
+RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+RUN echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+  $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+RUN apt-get update -y
+RUN apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+# add www-data to sudoers
+RUN apt-get install -y sudo
+RUN echo 'www-data ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+# apt clean
+RUN apt-get clean autoclean \
+    && apt-get autoremove -y
+
+WORKDIR /var/www/html
+
+FROM php_prod AS php_cron_prod
+
+RUN apt-get update -y && apt-get install -y cron jq logrotate
+RUN apt-get clean autoclean && apt-get autoremove -y
+
+# disable apt-compat cron job (it sleeps up to 30min and blocks /etc/cron.daily)
+RUN chmod -x /etc/cron.daily/apt-compat 2>/dev/null || true \
+  && mkdir -p /etc/apt/apt.conf.d \
+  && echo 'APT::Periodic::RandomSleep "0";' > /etc/apt/apt.conf.d/99disable-random-sleep
+
+RUN echo "* * * * * www-data cd /var/www/html && php artisan schedule:run >> /dev/null 2>&1" >> /etc/crontab
+RUN echo "#!/bin/bash" >> /docker-entrypoint.sh
+RUN echo "printenv > /etc/environment" >> /docker-entrypoint.sh
+RUN echo "cron -f" >> /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+ENTRYPOINT ["/docker-entrypoint.sh"]
+
+FROM php_prod AS php_debug
+
+RUN apt-get update -y \
+    && apt-get install -y \
+        nano \
+        php8.3-xdebug \
+    && echo 'xdebug.mode = coverage' > /etc/php/8.3/cli/conf.d/docker-xdebug.ini
+
+FROM php_prod AS php_nginx_prod
+
+RUN apt-get update -y \
+    && apt-get install -y \
+        supervisor \
+        curl \
+        gnupg2 \
+        ca-certificates \
+        lsb-release \
+        debian-archive-keyring
+
+RUN curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor \
+    > /usr/share/keyrings/nginx-archive-keyring.gpg
+
+RUN echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] \
+    http://nginx.org/packages/debian \
+    $(lsb_release -cs) nginx" \
+    > /etc/apt/sources.list.d/nginx.list
+
+RUN apt-get update -y \
+    && apt-get install -y \
+        php8.3-fpm \
+        nginx \
+    && apt-get clean autoclean \
+    && apt-get autoremove -y \
+    && echo 'zend_extension = /etc/php/ext/ioncube/ioncube_loader_lin_8.3.so' > /etc/php/8.3/fpm/conf.d/00-ioncube.ini 
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
+
+FROM php_nginx_prod AS php_nginx_debug
+
+RUN apt-get update -y \
+    && apt-get install -y \
+        nano \
+        php8.3-xdebug \
+    && echo 'xdebug.mode = coverage' > /etc/php/8.3/cli/conf.d/docker-xdebug.ini \
+    && echo 'xdebug.mode = coverage' > /etc/php/8.3/fpm/conf.d/docker-xdebug.ini

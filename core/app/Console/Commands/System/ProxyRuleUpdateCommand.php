@@ -1,0 +1,86 @@
+<?php
+
+namespace App\Console\Commands\System;
+
+use App\Models\ProxyRule;
+use Illuminate\Console\Command;
+
+class ProxyRuleUpdateCommand extends Command
+{
+    /** The old spelling still answers, so nothing scripted against it breaks. */
+    protected $aliases = ['proxy-rule:update'];
+
+    protected $signature = 'proxy:rule:update {id : Rule ID} {--upstream-host= : New upstream host} {--upstream-port= : New upstream port} {--upstream-protocol= : New upstream protocol} {--enabled= : Enable/disable rule (1/0)} {--force : Skip confirmation}';
+
+    protected $description = 'Update a proxy rule';
+
+    public function handle(): int
+    {
+        $id = $this->argument('id');
+        if (!is_string($id)) {
+            $this->error('Invalid id.');
+            return 1;
+        }
+
+        /** @var ?ProxyRule */
+        $rule = ProxyRule::find((int)$id);
+
+        if (!$rule) {
+            $this->error("Rule with ID {$id} not found.");
+            return 1;
+        }
+
+        $updates = [];
+
+        $hostOption = $this->option('upstream-host');
+        if (!empty($hostOption) && is_string($hostOption)) {
+            $updates['upstream_host'] = $hostOption;
+        }
+
+        $portOption = $this->option('upstream-port');
+        if (!empty($portOption) && is_string($portOption)) {
+            $port = (int)$portOption;
+            if ($port < 1 || $port > 65535) {
+                $this->error('Invalid port number.');
+                return 1;
+            }
+            $updates['upstream_port'] = $port;
+        }
+
+        $protocolOption = $this->option('upstream-protocol');
+        if (!empty($protocolOption) && is_string($protocolOption)) {
+            $updates['upstream_protocol'] = $protocolOption;
+        }
+
+        $enabledOption = $this->option('enabled');
+        if ($enabledOption === '0' || $enabledOption === '1') {
+            $updates['enabled'] = (bool)$enabledOption;
+        }
+
+        if (empty($updates)) {
+            $this->error('No updates provided.');
+            return 1;
+        }
+
+        $this->info('Current values:');
+        $this->line("  Upstream Host: " . $rule->upstream_host);
+        $this->line("  Upstream Port: " . $rule->upstream_port);
+        $this->line("  Upstream Protocol: " . ($rule->upstream_protocol ?? '-'));
+        $this->line("  Enabled: " . ($rule->enabled ? 'Yes' : 'No'));
+
+        $this->info('\nNew values:');
+        foreach ($updates as $key => $value) {
+            $this->line("  " . ucfirst(str_replace('_', ' ', $key)) . ": $value");
+        }
+
+        if (!$this->option('force') && !$this->confirm('Apply these changes?')) {
+            $this->info('Cancelled.');
+            return 0;
+        }
+
+        $rule->update($updates);
+        $this->info('Rule updated successfully.');
+
+        return 0;
+    }
+}

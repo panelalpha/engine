@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  Market Radar is a self-hosted competitor and industry monitor: an Express API
+  over MariaDB, with a React front end compiled to static files and served by
+  the same process.
+
+  The repository is a *deployment* repository, not a workstation one — its
+  `docker-compose.yml` is meant to be run on a server, it declares its own
+  `mariadb:11` with a healthcheck, and its own `Dockerfile` builds both halves —
+  so detection picks `compose` and that is correct. Nothing here changes how the
+  application is built. What it needs is a way to be *checked*.
+
+  This recipe exists because the application's answer to "am I working?" is not
+  on the page a browser gets. `/` is an SPA shell: `<title>Market Radar</title>`,
+  an empty `<div id="root">` and two `<script>` tags. It is byte-identical
+  whether the database is up or not, so every `_baseline` check passed on a
+  deploy whose MariaDB was unreachable — the port answered, the domain was
+  routed, the page was not a placeholder, and the site was broken. The
+  application states its real condition at `/api/health`, which answers
+  `{"status":"ok","database":"connected"}` or
+  `{"status":"error","database":"unreachable"}`, and until now no check could
+  ask about a path other than `/`, nor about a JSON member rather than a
+  substring.
+
+  So the check below reads that endpoint and requires `database: connected`,
+  and it is named for the failure rather than the endpoint: a failing
+  `market-radar/database-connected` is one sentence about one thing. It lives
+  under `_baseline` because this recipe claims one repository, and a group
+  directory is how `CheckRegistry` finds it — the group a recipe's checks go in
+  is the group they are added to, and `_baseline` is what every deployment is
+  asked.
+
+  Deliberately absent: an `extra` block. The compose strategy is chosen here as
+  it would be without this file — the repository ships the compose file the
+  engine would run — so there is nothing for the recipe to say about building,
+  and a `dockerfile`/`compose_path` hint would be inventing an override the
+  deploy does not need.
+
+  `id` is stated rather than inherited, and that is load-bearing rather than
+  tidiness. An `extends: compose` with no `id` answers to `compose`, which is
+  also the id of the shipped compose *platform* — and everything downstream
+  resolves a persisted `deploy_platform` through `PlatformRegistry`, which walks
+  the shipped manifests before the recipes. So the recipe's id resolved to the
+  platform's own manifest, whose `check:` list is empty, and the check below
+  was silently never asked: `AppHealth::declaredChecks()` read `[]` and the
+  deploy reported a healthy application with no way to see that it had asked
+  nothing. Same family of failure as the typo the registry now refuses at load,
+  and the reason a recipe that extends a platform states its own id.
+id: market-radar
+extends: compose
+check:
+  - _baseline/api-health

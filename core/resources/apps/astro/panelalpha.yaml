@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=../../platforms/_schema.json
+id: astro
+label: Astro
+priority: 900
+runtime: nginx
+port: 8080
+output_directory: dist
+requires:
+  node:
+    role: build
+detect:
+  any:
+    - glob: astro.config
+    - dep: astro
+commands:
+  - id: npm-install
+    stage: build
+    role: dependencies
+    run: '{{js.install}}'
+    description: "Resolved from the project's lockfile — npm ci, pnpm install --frozen-lockfile, yarn or bun."
+  - id: astro-build
+    stage: build
+    run: '{{js.build:npx astro build}}'
+    description: "The project's own build script wins over this default when package.json defines one."

@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=./_schema.json
+id: php
+label: PHP
+priority: 930
+runtime: php
+port: 8000
+env:
+  # APP_ENV is deliberately not here. It depends on the framework -- Laravel
+  # spells its production environment `production` and Symfony spells it
+  # `prod` -- and a static manifest cannot ask which one this is.
+  # PhpEnvironment decides it from the project's own composer.json and is the
+  # only place that says it, so the inspect preview cannot promise a value the
+  # deploy then contradicts.
+  LOG_CHANNEL: stderr
+requires:
+  php: runtime
+  node:
+    role: build
+    optional: true
+detect:
+  all:
+    - file: composer.json
+  none:
+    - file: artisan
+commands:
+  - id: composer-install
+    stage: build
+    role: dependencies
+    description: 'Runs on the host, in the image the app will be served from, so Composer checks the real PHP version and extension set. --no-plugins because a plugin is arbitrary PHP out of the customer repository and this runs on the host daemon.'
+    run: 'composer install --no-dev --no-interaction --no-scripts --no-plugins --optimize-autoloader'
+  # No npm commands here. The frontend is compiled on the host by
+  # HostCompile::runForPhp(), with the project's own package manager and its
+  # own lockfile. A build-stage command runs in the PHP host build, which has
+  # no Node in it, so `npm run build` there fails for every PHP app that has
+  # a build script (phpMyAdmin's webpack, among others).
+  - id: post-autoload-dump
+    stage: build
+    run: 'composer run-script --no-interaction post-autoload-dump'
+    optional: true

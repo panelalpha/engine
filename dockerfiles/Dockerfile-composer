@@ -1,0 +1,14 @@
+FROM php:8.3
+
+# php extensions
+RUN apt-get update -y && apt-get install -y zip libzip-dev
+# pcntl: laravel/horizon; ftp: league/flysystem-ftp (composer platform check)
+RUN docker-php-ext-install zip pcntl ftp
+
+# composer
+COPY --from=composer/composer:2.9-bin /composer /usr/bin/composer
+
+# clean apt
+RUN apt-get clean autoclean && apt-get autoremove -y
+
+WORKDIR /app

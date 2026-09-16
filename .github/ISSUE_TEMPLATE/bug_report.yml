@@ -1,0 +1,101 @@
+name: "Report a bug"
+description: "Something seems broken or behaving a little off? Let us know and we'll take a look."
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug!
+
+        > **Found a security vulnerability?** Do **not** file it here.
+        > Please disclose it privately. See [`SECURITY.md`](../blob/main/SECURITY.md).
+
+        > **A deploy failed?** That is usually not a bug in the engine itself.
+        > Start with [What happens when a deploy fails](../blob/main/docs/02-getting-started/what-happens.md);
+        > open an issue here if the engine's own behaviour is wrong.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you start
+      options:
+        - label: I searched existing issues and this has not been reported yet.
+          required: true
+        - label: I am running the latest release (or I can reproduce it there).
+          required: true
+        - label: This is not a security vulnerability (those go to SECURITY.md).
+          required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the problem, and what you expected instead.
+      placeholder: "When I ..., the engine ... . I expected ... ."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The exact steps, so we can see it too. Include the commands you ran.
+      placeholder: |
+        1. Run `pae ...`
+        2. Ask the assistant to `...`
+        3. See the error
+    validations:
+      required: true
+
+  - type: input
+    id: engine-version
+    attributes:
+      label: Engine version
+      description: "Output of `pae system:version` on the host."
+      placeholder: "e.g. 1.4.2"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: host-os
+    attributes:
+      label: Host operating system
+      options:
+        - Debian 12
+        - Debian 13
+        - Ubuntu 22.04
+        - Ubuntu 24.04
+        - Ubuntu 26.04
+        - Other (describe below)
+    validations:
+      required: true
+
+  - type: input
+    id: project
+    attributes:
+      label: Project / repository being deployed
+      description: If the bug happened during a deploy, which app or repo was it?
+      placeholder: "e.g. github.com/org/app, or 'not deploy-related'"
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or output
+      description: |
+        Paste any error messages, deploy logs, or command output.
+        This will be rendered as code, so no backticks are needed.
+        Please redact tokens, passwords, and anything secret.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots, related issues, workarounds you tried, etc.
+    validations:
+      required: false

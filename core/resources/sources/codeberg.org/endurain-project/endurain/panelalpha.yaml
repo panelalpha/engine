@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../../platforms/_schema.json
+description: >-
+  Endurain is a self-hosted fitness activity tracker: a FastAPI (uvicorn) backend
+  that also serves its built Vue frontend on :8080, with PostgreSQL for data and
+  Redis for rate limiting and auth-security storage. The repository ships its
+  production stack only as templates (docker-compose.yml.example and friends:
+  a pinned prebuilt image, host bind mounts under /var/opt/endurain, no compose
+  file the engine could run), so the compose probe declines them and detection
+  builds the repository's own multi-stage Dockerfile (node:24-slim frontend
+  build, python:3.13-alpine backend). The engine's own example-compose reader
+  would otherwise adopt the template's postgres and redis with its placeholder
+  credentials, which the app's separately generated DB_PASSWORD could never
+  match — so the prepare hook stashes the templates under names the engine
+  neither runs nor reads sidecars from, writes .env from the repo's
+  .env.example with DB_PASSWORD / SECRET_KEY / FERNET_KEY generated (FERNET_KEY
+  as a real urlsafe-base64 Fernet key, ENDURAIN_HOST removed so start.sh skips
+  env.js and the frontend falls back to same-origin API calls), creates the
+  LOCAL_PATH data directories in the account home, and the postgres and redis
+  sidecars arrive through overrides/docker-compose.override.yml with
+  healthchecks the app service depends on.
+extends: dockerfile
+extra:
+  # A source recipe is applied without running the probes
+  # (PlatformSelector::fromSource() calls describe() with no probe data), so the
+  # dockerfile probe's dockerfile/port_hint would be null/80 even though the
+  # repository ships docker/Dockerfile — and the deployability check then fails
+  # with "Dockerfile strategy selected but Dockerfile is missing." State what
+  # the probe would have found until that path runs its probes too.
+  dockerfile: docker/Dockerfile
+  port_hint: 8080
+env:
+  BEHIND_PROXY: 'false'

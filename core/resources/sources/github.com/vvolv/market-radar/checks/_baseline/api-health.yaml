@@ -1,0 +1,45 @@
+# The schema lives with the shipped checks, six levels up and across — this file
+# is under resources/sources/<host>/<owner>/<repo>/checks/<group>/, and the
+# schema is at resources/checks/_schema.json. Unlike a recipe's panelalpha.yaml
+# there is no inherited base to take the reference from: the recipe extends
+# `compose`, which is at resources/platforms/, so `../../../_schema.json` would
+# resolve to a file that does not exist. Editors that resolve the path rather
+# than the URL need it exact.
+# yaml-language-server: $schema=../../../../../../checks/_schema.json
+#
+# The application is up and cannot reach its database.
+#
+# Market Radar serves an SPA shell at `/` and reports nothing about itself
+# there: the page is identical whether MariaDB is answering or gone, because
+# the shell is compiled and the data arrives over `/api/...` afterwards. So the
+# port probe passes, the reachability comparison passes, and every `_baseline`
+# check passes on a site where nothing works — which is exactly the deploy this
+# check was written after.
+#
+# `/api/health` is the application's own answer, and the backend's `db.raw
+# ('SELECT 1')` behind it means a 200 there is a *measured* database round
+# trip rather than a configured one. It answers
+# `{"status":"ok","database":"connected"}` when the query succeeds and
+# `{"status":"error","database":"unreachable"}` with a 500 when it does not.
+#
+# Asked of the JSON member rather than the status, because the failure carries
+# both: matching `body_not: ['unreachable']` would pass on any other error the
+# endpoint might report and would be fooled by the word appearing in a message.
+# `json` compares the member, so the check fails for the reason it names.
+#
+# The sibling `php/no-database-error` cannot see this: it keys off the bodies
+# PHP renders (`SQLSTATE[`, `Error establishing a database connection`) on the
+# page itself, and this application renders JSON on a different path. Same
+# failure, different shape, and `expect.path`/`expect.json` are what make the
+# second shape expressible.
+id: api-health
+severity: error
+serving: database_error
+expect:
+  path: /api/health
+  status: [200]
+  json:
+    status: ok
+    database: connected
+message: 'The application is running but cannot reach its database.'
+fix: 'Read the mariadb service output with container_service_logs. The database is a service of this project''s own compose file, so a failure to start is usually its credentials or its data volume.'

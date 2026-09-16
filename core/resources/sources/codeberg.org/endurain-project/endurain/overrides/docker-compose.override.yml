@@ -1,0 +1,67 @@
+# Layers over the compose file the dockerfile strategy generates. The generated
+# file is correct about the app (env_file: .env) but its sidecars were merged in
+# by the engine's runtime-sidecars reader, which pins datastore credentials from
+# the compose file's own text with per-account placeholders — and an empty
+# ${DB_PASSWORD} at generation time resolves to the fallback `app`, on both
+# sides. Compose precedence (environment: beats env_file:) then makes the app
+# read `app` while this override's postgres gets the real .env value — two
+# passwords that can never agree. This layer repairs the app side: it pins the
+# same real values the postgres sidecar reads from .env, so both services are
+# configured from one text. CONTAINER_UID: the image bakes in UID/GID 1000
+# (ARG UID), but the bind mounts it writes are owned by the account's own uid
+# (1001 on the first account of a host); the hook records it in .env and the
+# app runs as that uid. env.js is world-writable in the image precisely so a
+# runtime user override can still write it.
+services:
+  app:
+    user: "${CONTAINER_UID:-1000}:${CONTAINER_UID:-1000}"
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER:-endurain}
+      POSTGRES_DB: ${POSTGRES_DB:-endurain}
+      DB_USER: ${POSTGRES_USER:-endurain}
+      DB_DATABASE: ${POSTGRES_DB:-endurain}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ${LOCAL_PATH:-/var/opt/endurain}/backend/data:/app/backend/data
+      - ${LOCAL_PATH:-/var/opt/endurain}/backend/logs:/app/backend/logs
+
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-endurain}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-endurain}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U endurain -d endurain"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    mem_limit: 512m
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - redis-data:/data
+    mem_limit: 128m
+
+volumes:
+  postgres-data:
+  redis-data:

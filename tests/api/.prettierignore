@@ -1,0 +1,7 @@
+node_modules
+.playwright
+playwright-report
+test-results
+package-lock.json
+test-data/static/ssh_test_key
+test-data/static/ssh_test_key.pub

@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=../../../_schema.json
+description: >-
+  ntfy is a self-hosted pub-sub notification server: a Go binary that serves
+  its web UI and a JSON/PUT API on :80, with SQLite for the message cache and
+  the auth database.
+
+  The repository ships three Dockerfiles and only one of them is deployable.
+  `Dockerfile` — the file at the root and, before this recipe, the one
+  detection built — is the *release* image: `FROM alpine`, `COPY ntfy
+  /usr/bin`, `ENTRYPOINT ["ntfy"]`. It expects a prebuilt binary that
+  GoReleaser produces in CI and the checkout does not contain, so building it
+  from source yields a container that starts and exits immediately, over and
+  over, with nothing on the wire. That is the restart loop this recipe exists
+  to stop. `Dockerfile-arm` is the same file for a cross-compiled arm binary,
+  and equally unservable. The file that builds from source is
+  `Dockerfile-build`, which the project's own `make docker-dev` passes to
+  `docker build --file ./Dockerfile-build`: it installs Node, Python and the
+  C toolchain, runs `make docs-build` and `make web-build`, and then compiles
+  the server with the `cli-linux-server` target, which is the only target that
+  emits a binary at `dist/ntfy_linux_server/ntfy`. The web build is not
+  optional — the server embeds the UI into the binary with `//go:embed
+  all:dist`, a directory `make web-build` populates — and `Dockerfile-build`
+  sequences docs, web and Go in that order and needs no build target: its
+  final stage is the default last stage.
+
+  The recipe has to say two things the file cannot. Its `ADD` list is stale:
+  `ban/`, `metrics/` and `twilio/` are Go packages the server imports and the
+  Dockerfile never copies into the builder, so the Go layer stops with
+  `no required module provides package heckel.io/ntfy/v2/ban` and no image is
+  ever produced. The prepare hook adds each missing directory above the layer
+  that compiles it, idempotently, so the fix lives with the recipe instead of
+  being lost when the repository moves on. And the final image's ENTRYPOINT is
+  a bare `ntfy`, which has subcommands: with no arguments the binary prints its
+  help and exits 0, so a container built from a *correct* Dockerfile-build
+  would still restart-loop without serving. The repository's own
+  `docker-compose.yml` passes `command: serve` for the same reason, and
+  `overrides/docker-compose.override.yml` is that line layered over the compose
+  the dockerfile strategy generates.
+
+  Nothing in the deployment needs a database, a volume or an environment
+  variable: the binary serves on `:80` with no configuration, and an empty
+  cache file means messages live in memory. The recipe states the file name and
+  the port it EXPOSEs, because a source recipe is applied before the probes run
+  and neither would otherwise be known.
+extends: dockerfile
+extra:
+  # A source recipe is applied without running the probes
+  # (PlatformSelector::fromSource() calls describe() with no probe data), so the
+  # dockerfile probe's dockerfile/port_hint would be null/80 even though the
+  # deployable file is Dockerfile-build — and the deployability check then fails
+  # with "Dockerfile strategy selected but Dockerfile is missing." State what
+  # the probe would have found until that path runs its probes too.
+  dockerfile: Dockerfile-build
+  port_hint: 80

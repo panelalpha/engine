@@ -1,0 +1,3 @@
+services:
+  redis:
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${DB_PWD}"]

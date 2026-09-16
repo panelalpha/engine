@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=./_schema.json
+id: python
+label: Python
+priority: 780
+runtime: command
+port: 8000
+env:
+  PYTHONUNBUFFERED: '1'
+requires:
+  python: runtime
+detect:
+  any:
+    - file: requirements.txt
+    # Not `file: pyproject.toml`: the name is TOML's generic config filename
+    # and tooling borrows it, so Dolibarr (a PHP app with codespell settings
+    # in one) was claimed as Python and served the placeholder. The probe
+    # wants a `[project]` or `[tool.poetry]` table in it -- the two ways a
+    # pyproject declares a Python project. See PyprojectProbe.
+    - probe: pyproject
+    - file: pipfile
+    - file: setup.py
+  none:
+    # The complement of the Django recipe's own detect, and it has to stay the
+    # same test: `path: manage.py` yielded the root layout to Django and then
+    # claimed the subdirectory one, which has no migrate and no collectstatic.
+    - probe: django
+commands:
+  - id: pip-install
+    stage: build
+    role: dependencies
+    when:
+      file: requirements.txt
+    run: 'python -m venv .venv && .venv/bin/pip install -r requirements.txt'
+  - id: serve
+    stage: start
+    serve: true
+    run: '.venv/bin/python main.py'
+commands_from:
+  pip-install: python.install
+  serve: python.start

@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../_schema.json
+#
+# A static site's front door. Every other page can be reachable while `/` is
+# not: the entry document is one file, and it is the one a visitor asks for
+# first and a crawler indexes.
+#
+# Measured on a live deploy: delete the entry document from a site of pages
+# and `/` answers 404 while `/about.html` answers 200. Today that reads as a
+# healthy application -- 404 is under the server-error threshold, so the port
+# probe passes it and the reachability comparison passes it too.
+id: entry-served
+severity: error
+serving: missing_entry
+expect:
+  status: ['2xx', '3xx']
+message: 'The front page is missing: / answered {status}.'
+explain: static-entry

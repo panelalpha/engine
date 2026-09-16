@@ -1,0 +1,46 @@
+services:
+  php:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    image: ghcr.io/panelalpha/engine-user-php-ls:20260619
+    pull_policy: missing
+    restart: always
+    hostname: {{ $user }}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    container_name: {{ $user }}
+    volumes:
+      - /home/{{ $user }}/:/home/{{ $user }}/
+      - /home/{{ $user }}/:/var/www/
+      - ./log:/var/log
+      - ./crontabs/www-data:/var/spool/cron/crontabs/{{ $user }}
+      - ./msmtp/msmtprc:/etc/msmtprc
+      - ./entrypoint.d/:/entrypoint.d/
+      - ./entrypoint-init.d/:/entrypoint-init.d/
+      - ./entrypoint-runner.sh:/entrypoint-runner.sh
+@foreach ($php_versions as $php_version)
+      - ./php/{{ $php_version }}/default.ini:/usr/local/lsws/lsphp{{ str_replace(".", "", $php_version) }}/etc/php/{{ $php_version }}/mods-available/90-panelalpha-default.ini
+      - ./php/{{ $php_version }}/custom.ini:/usr/local/lsws/lsphp{{ str_replace(".", "", $php_version) }}/etc/php/{{ $php_version }}/mods-available/91-panelalpha-custom.ini
+@endforeach
+    tty: true
+    {{ !empty($cpu_limit) ? ("cpus: " . $cpu_limit) : "" }}
+    {{ !empty($memory_limit) ? ("mem_limit: " . $memory_limit . "M") : "" }}
+    {{ !empty($memory_limit) ? ("memswap_limit: " . $memory_limit . "M") : "" }}
+@if ($device_read_bps || $device_write_bps)
+    blkio_config:
+@if ($device_read_bps)
+      device_read_bps:
+        - path: {{ $block_device }}
+          rate: '{{ $device_read_bps }}'
+@endif
+@if ($device_write_bps)
+      device_write_bps:
+        - path: {{ $block_device }}
+          rate: '{{ $device_write_bps }}'
+@endif
+@endif
+networks: 
+  default: 
+    name: pash-default-network
+    external: true

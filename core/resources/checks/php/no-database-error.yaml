@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../_schema.json
+#
+# The application came up and cannot reach its database.
+#
+# Almost always a 200: the application catches the failure and renders a page
+# about it, so the port answers, the domain resolves and the deploy is green.
+# WordPress has its own sentence for this and PDO has SQLSTATE; both are
+# specific enough to be worth matching literally.
+#
+# No `when` guard, deliberately. An application with no database never renders
+# any of these, so the check costs it nothing and the manifests that have no
+# database do not have to say so.
+id: no-database-error
+severity: error
+serving: database_error
+expect:
+  body_not:
+    - 'Error establishing a database connection'
+    - 'SQLSTATE['
+    - 'Access denied for user'
+    - 'Unknown database'
+message: 'The application is running but cannot reach its database.'
+fix: 'Check the database credentials in the project environment, and that the database service is up.'
