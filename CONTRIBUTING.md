@@ -113,6 +113,23 @@ Common types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`. Reference an i
 
 ---
 
+## Contributor License Agreement
+
+Before we can accept your first contribution, you must agree to the [PanelAlpha Contributor License Agreement](CLA.md).
+
+The CLA confirms that:
+
+- you have the right to submit your contribution;
+- you retain ownership of your contribution;
+- you grant PanelAlpha the rights needed to use, modify, distribute and sublicense it;
+- your contribution may be used as part of both open-source and commercial PanelAlpha products.
+
+You only need to accept the CLA once.
+
+When you open your first pull request, our CLA check will guide you through the process. Pull requests cannot be merged until the CLA has been accepted.
+
+---
+
 ## Opening a pull request
 
 - Give it a clear title and describe **what** changed and **why**.
